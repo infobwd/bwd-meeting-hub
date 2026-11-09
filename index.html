@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102850">
+  <meta name="description" content="BWD Meeting Hub — ต้นแบบจัดการประชุม วาระ และภารกิจ">
+  <title>BWD Meeting Hub | ระบบประชุมและติดตามภารกิจ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">ข้ามไปเนื้อหา</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="เมนูหลัก">
+      <a class="brand" href="#dashboard" aria-label="BWD Meeting Hub หน้าภาพรวม">
+        <span class="brand-logo">B</span>
+        <span class="brand-words"><strong>BWD Meeting Hub</strong><small>ประชุม • มติ • ภารกิจ</small></span>
+      </a>
+      <div class="side-caption">เมนูหลัก</div>
+      <nav class="side-nav" aria-label="นำทาง">
+        <button type="button" class="nav-link is-active" data-view="dashboard"><span aria-hidden="true">◫</span> ภาพรวม</button>
+        <button type="button" class="nav-link" data-view="meetings"><span aria-hidden="true">▤</span> การประชุม</button>
+        <button type="button" class="nav-link" data-view="tasks"><span aria-hidden="true">☑</span> ภารกิจ</button>
+      </nav>
+      <div class="side-footer">
+        <span class="demo-dot" aria-hidden="true"></span> รุ่นทดลอง R1
+        <p>ข้อมูลเก็บอยู่เฉพาะเบราว์เซอร์เครื่องนี้ ยังไม่มีระบบบัญชีผู้ใช้หรือแจ้งเตือนจริง</p>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <span class="mobile-logo">B</span>
+          <div><strong>โรงเรียนบ้านวังด้ง</strong><small>ระบบจัดการประชุมและติดตามภารกิจ</small></div>
+        </div>
+        <span class="version-pill">ต้นแบบ R1</span>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <div class="privacy-banner" role="note">
+          <span aria-hidden="true">ⓘ</span>
+          <div><strong>พื้นที่ทดลอง — ไม่ใช่ระบบบันทึกประชุมทางการ</strong>
+            <p>การเปลี่ยนแปลงบันทึกไว้เฉพาะอุปกรณ์นี้ ไม่เชื่อมต่อครูคนอื่น และยังไม่ส่งการแจ้งเตือน โปรดอย่าใส่ข้อมูลส่วนบุคคลหรือเอกสารลับ</p>
+          </div>
+        </div>
+        <div id="appContent" aria-live="off"></div>
+      </main>
+
+      <nav class="bottom-nav" aria-label="เมนูมือถือ">
+        <button type="button" class="bottom-link is-active" data-view="dashboard"><span aria-hidden="true">◫</span>ภาพรวม</button>
+        <button type="button" class="bottom-link" data-view="meetings"><span aria-hidden="true">▤</span>การประชุม</button>
+        <button type="button" class="bottom-link" data-view="tasks"><span aria-hidden="true">☑</span>ภารกิจ</button>
+      </nav>
+    </div>
+  </div>
+
+  <dialog id="editorDialog" aria-labelledby="dialogTitle">
+    <form id="editorForm">
+      <div class="dialog-heading"><h2 id="dialogTitle">เพิ่มข้อมูล</h2><button id="closeDialog" class="icon-button" type="button" aria-label="ปิด">✕</button></div>
+      <div id="formFields"></div>
+      <div class="dialog-actions"><button type="button" class="button secondary" id="cancelDialog">ยกเลิก</button><button type="submit" class="button primary">บันทึก</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
