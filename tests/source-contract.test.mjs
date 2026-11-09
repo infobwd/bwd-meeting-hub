@@ -39,5 +39,5 @@ test("roadmap and draft agenda exist",()=>{
   assert.ok(plan.includes("R2"));
   assert.ok(plan.includes("Private-by-default"));
   assert.ok(agenda.includes("25–27 พฤศจิกายน 2569"));
-  assert.ok(agenda.includes("รอยืนยันเดือน/ปี"));
+  assert.ok(agenda.includes("ต้องยืนยันเดือน/ปี"));
 });
