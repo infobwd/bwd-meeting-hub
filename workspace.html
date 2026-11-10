@@ -7,10 +7,11 @@
   <title>BWD Meeting Hub — พื้นที่ทำงานร่วมกัน (R2)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./portal.css?v=ext02">
+  <link rel="stylesheet" href="./portal.css?v=doc02">
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./portal.js?v=ext02" defer></script>
+  <script src="./doc02.js?v=doc02" defer></script>
+  <script src="./portal.js?v=doc02" defer></script>
   <script src="./meeting-pdf-reader.js?v=ux07" defer></script>
 </head>
 <body>
@@ -67,6 +68,35 @@
       <div id="modalFields"></div>
       <div class="modal-actions"><button class="button subtle" type="button" id="cancelModal">ยกเลิก</button><button class="button primary" type="submit" id="submitModal">บันทึก</button></div>
     </form>
+  </dialog>
+  <!-- DOC-02: preview/draft editing is private to the authorized workspace.
+       Browser previews are NOT signed, ratified or an official export. -->
+  <dialog id="doc02Dialog" class="doc02-dialog" aria-labelledby="doc02Title">
+    <div class="doc02-shell">
+      <header class="doc02-dialog-head">
+        <div><p class="eyebrow">DOC-02 · เอกสารฉบับร่าง</p>
+          <h2 id="doc02Title">ร่างเอกสารการประชุม</h2>
+          <p class="mini">ใช้ข้อมูลวาระชุดเดียวกัน แต่เก็บรุ่นของเอกสารแต่ละประเภทแยกกัน</p>
+        </div>
+        <button type="button" id="doc02Close" class="button subtle" aria-label="ปิดหน้าพรีวิวร่างเอกสาร">✕ ปิด</button>
+      </header>
+      <nav id="doc02Tabs" class="doc02-tabs" role="tablist" aria-label="เลือกประเภทเอกสาร"></nav>
+      <div id="doc02Status" class="doc02-state" role="status"></div>
+      <p id="doc02Error" class="ux04-form-error" role="alert" hidden></p>
+      <p id="doc02Success" class="mini" role="status" aria-live="polite"></p>
+      <div class="doc02-columns">
+        <section class="doc02-edit-pane" aria-label="ข้อมูลร่างเอกสาร">
+          <h3>ข้อมูลที่ใช้จัดทำร่าง</h3>
+          <div id="doc02Editor"></div>
+          <div id="doc02Actions"></div>
+        </section>
+        <section class="doc02-preview-pane" aria-label="ตัวอย่างเอกสารขนาด A4">
+          <div class="doc02-preview-head"><h3>ตัวอย่างหน้ากระดาษ A4</h3>
+            <span class="mini">แสดงสำหรับอ่านตรวจ · ไม่ใช่ฉบับรับรอง</span></div>
+          <div id="doc02Preview" class="doc02-preview-scroll" aria-live="polite"></div>
+        </section>
+      </div>
+    </div>
   </dialog>
   <dialog id="evidencePreview" class="evidence-preview" aria-labelledby="evidencePreviewTitle">
     <div class="preview-shell">
