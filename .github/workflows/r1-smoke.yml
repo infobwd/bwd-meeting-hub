@@ -18,5 +18,6 @@ jobs:
         run: |
           node --check app.js
           node --check portal.js
+          node --check meeting-pdf-reader.js
       - name: Check R1 and R2 source contracts
         run: node --test tests/*.test.mjs
