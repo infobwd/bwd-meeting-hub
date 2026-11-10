@@ -30,6 +30,7 @@ let context=null,activeType="agenda",documents={agenda:null,minutes:null},templa
 
 function ordered(items){return items.slice().sort((a,b)=>Number(a.section)-Number(b.section)||Number(a.position)-Number(b.position));}
 function sourceFields(type,meeting,agendas){
+ const withinSection={};
  return {
   header:{
    meeting_no:"",start_time:"",end_time:"",venue:meeting.location||"",
@@ -37,6 +38,7 @@ function sourceFields(type,meeting,agendas){
   },
   items:ordered(agendas).map(a=>({
    agenda_id:a.id,section:Number(a.section),position:Number(a.position||0),
+   display_no:String(a.section)+"."+String(withinSection[a.section]=(withinSection[a.section]||0)+1),
    title:String(a.title||""),notes:String(a.notes||""),
    background:"",references:"",question:"",substance:"",deliberation:"",
    information:"",resolution:"",proposal:"",directive:""
@@ -67,7 +69,7 @@ function textField(label,key,value,wide=false){
 function itemFields(item,type){
  const keys=type==="agenda"?extraAgendaLabels:outcomeLabels;
  return '<details class="doc02-agenda-editor"><summary>วาระ '+
-  escapeHtml(String(item.section)+"."+String(item.position))+" — "+escapeHtml(item.title)+
+  escapeHtml(item.display_no||String(item.section)+"."+String(item.position))+" — "+escapeHtml(item.title)+
   '</summary><p class="doc02-source-note">รายละเอียดหัวข้อเดิม (อ่านอย่างเดียว): '+
   escapeHtml(item.notes||"ไม่มีข้อความประกอบ")+'</p>'+
   keys.map(([key,label])=>'<label class="doc02-field">'+escapeHtml(label)+
@@ -91,8 +93,8 @@ function line(value,placeholder="ยังไม่ระบุ"){
  return escapeHtml(String(value||"").trim()||placeholder).replace(/\n/g,"<br>");
 }
 function itemPreview(item,type){
- const sec=escapeHtml(String(item.section)),pos=escapeHtml(String(item.position));
- let body='<div class="doc02-paper-item"><h4>วาระ '+sec+"."+pos+" "+escapeHtml(item.title)+'</h4>';
+ const no=escapeHtml(item.display_no||String(item.section)+"."+String(item.position));
+ let body='<div class="doc02-paper-item"><h4>วาระ '+no+" "+escapeHtml(item.title)+'</h4>';
  if(type==="agenda"){
   if(item.notes)body+='<p><b>รายละเอียดต้นทาง:</b> '+line(item.notes)+'</p>';
   for(const [key,label] of extraAgendaLabels){if(item[key])body+='<p><b>'+escapeHtml(label)+':</b> '+line(item[key])+'</p>';}
@@ -223,7 +225,7 @@ async function run(action,button){
  if(!context.editable&&action!=="preview")return;
  if(action==="preview"){
   $("doc02Preview").innerHTML=previewMarkup(type,captureForm());
-  hasUnsaved=true;$("doc02Preview").scrollIntoView?.({block:"nearest",behavior:"smooth"});
+  $("doc02Preview").scrollIntoView?.({block:"nearest",behavior:"smooth"});
   return;
  }
  const row={p_meeting_id:m.id,p_doc_type:type,p_expected_revision:latest?.revision||0};
@@ -271,7 +273,7 @@ function close(){
 async function open(options){
  if(!options?.meeting||options.meeting.meeting_mode==="externally_hosted"||
     options.meeting.meeting_mode==="co_hosted")return;
- context=options;activeType="agenda";hasUnsaved=false;
+ context=options;activeType=options.type==="minutes"?"minutes":"agenda";hasUnsaved=false;
  const dialog=$("doc02Dialog");if(!dialog)return;
  $("doc02Success").textContent="";
  dialog.showModal();
