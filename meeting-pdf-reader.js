@@ -132,7 +132,7 @@ async function selectLocal(file){
   await clearPdf();
   if(ticket!==loadingId||!dialog.open)return;
   ui.drive.hidden=true;ui.localPane.hidden=false;ui.pageBar.hidden=false;
-  ui.driveButton.hidden=false;ui.source.textContent="อ่านแบบหนังสือ (ไฟล์ในเครื่อง)";
+  ui.driveButton.hidden=false;ui.source.textContent="อ่านแบบหนังสือ (ไฟล์ในเครื่อง — โปรดตรวจให้ตรงฉบับบน Drive)";
   message("กำลังเตรียมอ่าน PDF…");
   try{
     if(file.size>MAX_BYTES||file.size<5)throw Error("file_size");
@@ -217,5 +217,5 @@ window.addEventListener("resize",()=>{
   if(!pdf||!dialog.open)return;
   clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>render().catch(()=>{}),200);
 },{passive:true});
-window.BWDMeetingPdfReader={open};
+window.BWDMeetingPdfReader={open,close:()=>{if(dialog.open)dialog.close();}};
 })();
