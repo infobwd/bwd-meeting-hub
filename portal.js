@@ -13,8 +13,8 @@ const statuses={todo:"ยังไม่เริ่ม",doing:"กำลัง�
 const sections={"1":"ประธานแจ้งให้ทราบ","2":"รับรองรายงานครั้งก่อน","3":"เรื่องสืบเนื่อง","4":"เรื่องเพื่อพิจารณา","5":"เรื่องอื่น ๆ"};
 const state={
   client:null,user:null,member:null,profile:null,meetings:[],access:[],agendas:[],decisions:[],
-  minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],
-  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false,loadError:""
+  minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],participations:[],externalReports:[],
+  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",meetingFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false,loadError:""
 };
 const modal=$("modal"), actionForm=$("actionForm");
 let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus,formSnapshot="",formSubmitting=false,discardPromptActive=false;
@@ -147,7 +147,7 @@ function statusMessage(message,error=false){
 }
 function setVisible(id,visible){$(id).hidden=!visible;}
 function clearPrivateView(){
- for(const key of ["meetings","access","agendas","decisions","minutes","tasks","links","updates","evidence","profiles","documents"])
+ for(const key of ["meetings","access","agendas","decisions","minutes","tasks","links","updates","evidence","profiles","documents","participations","externalReports"])
   state[key]=[];
  state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};
  state.loadError="";state.loading=false;
@@ -601,13 +601,16 @@ async function reload(){
    c.from("profiles").select("id,display_name"),
    c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
    c.from("task_evidence").select("*").order("created_at",{ascending:false}),
-   c.from("meeting_documents").select("*").order("added_at",{ascending:false})
+   c.from("meeting_documents").select("*").order("added_at",{ascending:false}),
+   c.from("meeting_participations").select("*"),
+   c.from("external_attendance_reports").select("*").order("updated_at",{ascending:false})
   ];
   const results=await Promise.all(queries);
   const error=results.find(x=>x.error)?.error;
   if(error)throw error;
   [state.meetings,state.access,state.agendas,state.decisions,state.minutes,
-   state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents]=results.map(x=>x.data||[]);
+   state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents,
+   state.participations,state.externalReports]=results.map(x=>x.data||[]);
   if(state.activeMeeting&&!meeting(state.activeMeeting))state.activeMeeting=null;
   return true;
  }catch(error){
@@ -647,7 +650,88 @@ async function bootstrap(){
   $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+friendlyError(err);
  }
 }
+
+/* EXT-02: external participation is a distinct workflow from official school minutes. */
+const externalReportLabels={draft:"ร่างรายงาน",submitted:"รอตรวจทาน",returned:"ส่งกลับให้แก้ไข",reviewed:"ตรวจทานแล้ว"};
+const participationLabels={unknown:"ยังไม่ยืนยันการเข้าร่วม",planned:"มีกำหนดเข้าร่วม",attended:"ยืนยันว่าเข้าร่วมแล้ว",absent:"ไม่ได้เข้าร่วม"};
+const participationRoleLabels={attendee:"ผู้เข้าร่วม",representative:"ผู้แทน",observer:"ผู้สังเกตการณ์",committee:"กรรมการ",coordinator:"ผู้ประสานงาน"};
+const hostLabels={area:"เขตพื้นที่การศึกษา",network:"กลุ่มเครือข่าย",school:"โรงเรียนอื่น",other:"หน่วยงานอื่น"};
+let externalRosterRequest=0,externalRosterLoading=false;
+function externalParticipation(m){return state.participations.find(p=>p.meeting_id===m.id&&p.user_id===state.user?.id);}
+function ownExternalReport(m){return state.externalReports.find(r=>r.meeting_id===m.id&&r.author_id===state.user?.id);}
+function externalReportDetails(r){
+ const labels=[["สาระสำคัญที่ได้รับทราบ",r.summary],["ข้อสั่งการหรือกำหนดส่งจากหน่วยงานผู้จัด",r.directives],
+               ["เรื่องที่เกี่ยวข้องกับโรงเรียน",r.school_impact],["ข้อเสนอเพื่อดำเนินการ",r.proposed_actions]];
+ return labels.map(([title,value])=>'<div class="ext-report-section"><h4>'+esc(title)+'</h4>'+
+  (String(value||"").trim()?'<p class="note">'+esc(value)+'</p>':'<p class="muted">ยังไม่ได้บันทึก</p>')+'</div>').join("");
+}
+function renderExternalReport(r,m){
+ const mine=r.author_id===state.user?.id,reviewer=isEditor(m.id)&&!mine,locked=m.status==="archived";
+ const status=externalReportLabels[r.status]||"รอตรวจสถานะ";
+ return '<article class="ext-report-card"><div class="ext-report-head"><h3>รายงานของ '+esc(fullName(r.author_id))+'</h3>'+
+   '<span class="status '+(r.status==="reviewed"?"green":r.status==="returned"?"gold":"")+'">'+esc(status)+'</span></div>'+
+   '<p class="mini">ฉบับที่ '+esc(r.version)+' — รายงานผลการเข้าร่วม ไม่ใช่รายงานการประชุมฉบับรับรองของเจ้าภาพ</p>'+
+   externalReportDetails(r)+
+   (r.review_note?'<p class="ext-review-note"><strong>ความเห็นผู้ตรวจ:</strong> '+esc(r.review_note)+'</p>':"")+
+   '<div class="actions">'+
+    (mine&&!locked&&["draft","returned"].includes(r.status)?button("แก้ไขรายงาน","extReport",{"meeting-id":m.id},"primary"):"")+
+    (mine&&!locked&&r.status==="draft"&&String(r.summary||"").trim()?button("ส่งรายงานให้ตรวจ","extSubmit",{"meeting-id":m.id},"outline"):"")+
+    (mine&&!locked&&r.status==="submitted"?button("ดึงรายงานกลับมาแก้ไข","extWithdraw",{"meeting-id":m.id}):"")+
+    (reviewer&&!locked&&r.status==="submitted"?button("ตรวจทานผ่าน","extApprove",{"meeting-id":m.id,"author-id":r.author_id},"primary")+
+      button("ส่งกลับให้แก้ไข","extReject",{"meeting-id":m.id,"author-id":r.author_id},"outline"):"")+
+   '</div></article>';
+}
+function externalMeetingCard(m){
+ const count=state.externalReports.filter(r=>r.meeting_id===m.id).length;
+ const docs=state.documents.filter(d=>d.meeting_id===m.id).length;
+ return '<article class="card meeting-card ext-meeting-card">'+
+  '<div class="meeting-card-head"><span class="meeting-type">ไปร่วมประชุมภายนอก</span>'+
+  '<span class="status">บันทึกผลการเข้าร่วม</span></div>'+
+  '<h3>'+esc(displayMeetingTitle(m))+'</h3>'+
+  '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+(m.location?' · '+esc(m.location):'')+'</p>'+
+  '<p class="ext-host">หน่วยงานผู้จัด: '+esc(m.host_organization||"ยังไม่ระบุ")+'</p>'+
+  '<p class="meeting-counts">'+count+' รายงาน · '+docs+' เอกสาร</p>'+
+  '<div class="actions">'+button("เปิดรายละเอียด","openMeeting",{"meeting-id":m.id},"primary")+'</div></article>';
+}
+function renderExternalMeeting(m){
+ const editable=isEditor(m.id),self=externalParticipation(m),own=ownExternalReport(m);
+ const allowedSelf=isStaff()&&!!self&&self.attendance_status!=="absent"&&m.status!=="archived";
+ const parts=state.participations.filter(p=>p.meeting_id===m.id);
+ const reports=state.externalReports.filter(r=>r.meeting_id===m.id);
+ const docs=state.documents.filter(d=>d.meeting_id===m.id);
+ const pRows=parts.length?parts.map(p=>'<div class="ext-person"><strong>'+esc(fullName(p.user_id))+'</strong>'+
+    '<span class="mini">'+esc(participationRoleLabels[p.participation_role]||"ผู้เข้าร่วม")+' · '+
+    esc(participationLabels[p.attendance_status]||"รอตรวจสถานะ")+'</span></div>').join(""):empty("ยังไม่ได้บันทึกผู้เข้าร่วมจริง");
+ const ownActions=self&&m.status!=="archived"?
+   '<div class="actions">'+
+     (["unknown","planned"].includes(self.attendance_status)?button("ยืนยันว่าเข้าร่วมแล้ว","extMarkAttendance",{"meeting-id":m.id,"attendance-status":"attended"},"outline"):"")+
+     (["unknown","planned"].includes(self.attendance_status)&&!own?button("แจ้งว่าไม่ได้เข้าร่วม","extMarkAttendance",{"meeting-id":m.id,"attendance-status":"absent"},"subtle"):"")+
+   '</div>':"";
+ const reportActions=allowedSelf&&!own?button("＋ เขียนรายงานผลของฉัน","extReport",{"meeting-id":m.id},"primary"):"";
+ const canAttach=allowedSelf&&(!own||["draft","returned"].includes(own.status));
+ return '<div class="meeting-detail ext-meeting-detail">'+
+  '<div class="meeting-back">'+button("← กลับรายการประชุม","backMeetings")+'</div>'+
+  '<header class="meeting-detail-head"><div><p class="eyebrow">ไปร่วมประชุมภายนอก · '+esc(names[m.kind]||"การประชุม")+'</p>'+
+   '<h2>'+esc(displayMeetingTitle(m))+'</h2><p class="meeting-date">'+esc(formatDate(m.scheduled_on))+
+   ' · '+esc(m.location||"ยังไม่ระบุสถานที่")+'</p></div>'+
+   '<div class="meeting-badges"><span class="status">รายงานผลการเข้าร่วม</span></div></header>'+
+  '<div class="notice-box">นี่เป็นบันทึกของบุคลากรโรงเรียน ไม่ใช่รายงานการประชุมที่เจ้าภาพรับรองแล้ว และยังไม่มีการส่งข้อสั่งการไปเป็นมติของโรงเรียนอัตโนมัติ</div>'+
+  section("ข้อมูลผู้จัดประชุม",'<p><strong>หน่วยงานผู้จัด:</strong> '+esc(m.host_organization||"ยังไม่ระบุ")+
+   '</p><p class="mini">ประเภทหน่วยงาน: '+esc(hostLabels[m.host_type]||"ยังไม่ระบุ")+
+   ' · วัน/เวลา: '+esc(formatDate(m.scheduled_on))+' (ยังไม่บันทึกเวลาเริ่ม–เลิก)</p>')+
+  section("ผู้เข้าร่วมประชุมจริง",pRows+ownActions+
+   (editable&&m.status!=="archived"?'<div class="actions">'+button("＋ เพิ่มผู้เข้าร่วมที่มีบัญชีแล้ว","extParticipant",{"meeting-id":m.id})+'</div>':""))+
+  section("รายงานผลการเข้าร่วม",'<div class="notice-box">สรุปสาระสำคัญและข้อสั่งการจากแหล่งที่ตรวจสอบได้ ผู้เข้าร่วมแต่ละคนบันทึกรายงานของตนเอง</div>'+
+    (reports.length?reports.map(r=>renderExternalReport(r,m)).join(""):empty("ยังไม่มีรายงานผลการเข้าร่วมที่คุณมีสิทธิ์อ่าน"))+
+    '<div class="actions">'+reportActions+'</div>')+
+  section("เอกสารและหลักฐาน",docs.length?docs.map(meetingDocumentMarkup).join(""):empty("ยังไม่ได้แนบเอกสารจาก Google Drive"),
+   canAttach?button("＋ แนบลิงก์หลักฐานจาก Drive","extDocument",{"meeting-id":m.id},"primary"):"")+
+  section("เรื่องที่ต้องดำเนินการ",'<div class="notice-box">การส่งเรื่องเข้าวาระประชุมครูหรือเชื่อมงานมอบหมายจะดำเนินการใน EXT-03 หลังตรวจสอบเนื้อหาและผู้รับผิดชอบแล้ว ไม่สร้างงานหรือมติจากรายงานนี้อัตโนมัติ</div>')+
+  '</div>';
+}
+
 function meetingCard(m){
+ if(m.meeting_mode==="externally_hosted")return externalMeetingCard(m);
  const agendaCount=state.agendas.filter(a=>a.meeting_id===m.id).length;
  const taskCount=state.links.filter(l=>l.meeting_id===m.id).length;
  const docCount=state.documents.filter(d=>d.meeting_id===m.id).length;
@@ -738,11 +822,21 @@ function renderMeetings(){
  }
  const create=isAdmin()||state.member?.role==="secretary";
  const sorted=state.meetings.slice().sort((a,b)=>(b.scheduled_on||"").localeCompare(a.scheduled_on||"")||(b.created_at||"").localeCompare(a.created_at||""));
+ const modes={all:()=>true,school:m=>!["externally_hosted","co_hosted"].includes(m.meeting_mode),
+   external:m=>m.meeting_mode==="externally_hosted",joint:m=>m.meeting_mode==="co_hosted"};
+ const filtered=sorted.filter(m=>(modes[state.meetingFilter]||modes.all)(m));
  return '<div class="flex-between meeting-list-head"><h2>รายการประชุมที่เข้าถึงได้</h2>'+
-  (create?button("＋ สร้างการประชุม","newMeeting",{},"primary"):"")+'</div>'+
-  (sorted.length?'<div class="cards meeting-cards">'+sorted.map(meetingCard).join("")+'</div>':empty("ยังไม่มีรายการประชุมที่บัญชีนี้เข้าถึงได้"));
+  '<div class="actions">'+(create?button("＋ โรงเรียนจัดประชุม","newMeeting",{},"outline"):"")+
+  (isStaff()?button("＋ ไปร่วมประชุมภายนอก","newExternalMeeting",{},"primary"):"")+'</div></div>'+
+  '<label class="ext-filter-label" for="meetingFilter">แสดงการประชุมตามประเภท</label>'+
+  '<select id="meetingFilter" class="ext-meeting-filter" aria-label="กรองตามประเภทการประชุม">'+
+   [['all','ทั้งหมด'],['school','โรงเรียนจัด'],['external','ไปร่วมภายนอก'],['joint','ร่วมจัดประชุม']].map(([key,label])=>
+     '<option value="'+key+'" '+(state.meetingFilter===key?"selected":"")+'>'+label+'</option>').join("")+'</select>'+
+  (filtered.length?'<div class="cards meeting-cards">'+filtered.map(meetingCard).join("")+'</div>':
+   empty("ยังไม่มีรายการประชุมตามประเภทที่เลือก"));
 }
 function renderMeeting(m){
+ if(m.meeting_mode==="externally_hosted")return renderExternalMeeting(m);
  const editable=isEditor(m.id),min=minute(m.id);
  const ag=state.agendas.filter(a=>a.meeting_id===m.id).slice().sort((a,b)=>Number(a.section)-Number(b.section)||Number(a.position||0)-Number(b.position||0)||(a.title||"").localeCompare(b.title||"","th"));
  const linked=state.links.filter(l=>l.meeting_id===m.id);
