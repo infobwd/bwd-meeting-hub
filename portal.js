@@ -766,6 +766,15 @@ function renderExternalReport(r,m){
       button("ส่งกลับให้แก้ไข","extReject",{"meeting-id":m.id,"author-id":r.author_id},"outline"):"")+
    '</div></article>';
 }
+function externalDocumentMarkup(d){
+ const fileId=String(d.drive_file_id||"");
+ if(!/^[A-Za-z0-9_-]{10,128}$/.test(fileId))return "";
+ const href="https://drive.google.com/file/d/"+encodeURIComponent(fileId)+"/view";
+ return '<div class="item"><h3>'+esc(d.title||"เอกสารประกอบ")+'</h3>'+
+  '<p class="mini">เอกสารอ้างอิงที่ผู้เข้าร่วมแนบ โปรดตรวจสอบต้นฉบับและสิทธิ์การเปิดใน Google Drive</p>'+
+  '<div class="actions">'+button("อ่าน PDF ในเว็บ","readMeetingPdf",{"document-id":d.id},"primary")+
+   '<a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิดใน Google Drive</a></div></div>';
+}
 function externalMeetingCard(m){
  const count=state.externalReports.filter(r=>r.meeting_id===m.id).length;
  const docs=state.documents.filter(d=>d.meeting_id===m.id).length;
@@ -809,7 +818,7 @@ function renderExternalMeeting(m){
   section("รายงานผลการเข้าร่วม",'<div class="notice-box">สรุปสาระสำคัญและข้อสั่งการจากแหล่งที่ตรวจสอบได้ ผู้เข้าร่วมแต่ละคนบันทึกรายงานของตนเอง</div>'+
     (reports.length?reports.map(r=>renderExternalReport(r,m)).join(""):empty("ยังไม่มีรายงานผลการเข้าร่วมที่คุณมีสิทธิ์อ่าน"))+
     '<div class="actions">'+reportActions+'</div>')+
-  section("เอกสารและหลักฐาน",docs.length?docs.map(meetingDocumentMarkup).join(""):empty("ยังไม่ได้แนบเอกสารจาก Google Drive"),
+  section("เอกสารและหลักฐาน",docs.length?docs.map(externalDocumentMarkup).join(""):empty("ยังไม่ได้แนบเอกสารจาก Google Drive"),
    canAttach?button("＋ แนบลิงก์หลักฐานจาก Drive","extDocument",{"meeting-id":m.id},"primary"):"")+
   section("เรื่องที่ต้องดำเนินการ",'<div class="notice-box">การส่งเรื่องเข้าวาระประชุมครูหรือเชื่อมงานมอบหมายจะดำเนินการใน EXT-03 หลังตรวจสอบเนื้อหาและผู้รับผิดชอบแล้ว ไม่สร้างงานหรือมติจากรายงานนี้อัตโนมัติ</div>')+
   '</div>';
