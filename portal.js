@@ -112,6 +112,12 @@ function statusMessage(message,error=false){
   toastTimer=setTimeout(()=>region.replaceChildren(),error?8000:4500);
 }
 function setVisible(id,visible){$(id).hidden=!visible;}
+function clearPrivateView(){
+ for(const key of ["meetings","access","agendas","decisions","minutes","tasks","links","updates","evidence","profiles","documents"])
+  state[key]=[];
+ state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};
+ state.loadError="";state.loading=false;
+}
 function setPage(page){
   if(!["overview","meetings","tasks"].includes(page))return;
   state.page=page;state.activeMeeting=null;statusMessage("");
@@ -144,14 +150,14 @@ function field(label,key,content,help=""){
 function clearFieldErrors(){
  document.querySelectorAll("#modalFields .field-error").forEach(node=>{node.textContent="";node.hidden=true;});
  const summary=$("modalMessage");if(summary){summary.textContent="";summary.hidden=true;}
- document.querySelectorAll("#modalFields [aria-invalid]").forEach(node=>node.removeAttribute("aria-invalid"));
+ document.querySelectorAll("#modalFields [aria-invalid]").forEach(node=>{node.removeAttribute("aria-invalid");node.removeAttribute("aria-describedby");});
 }
 function showFormError(message,key=""){
  const summary=$("modalMessage");
  if(summary){summary.hidden=false;summary.textContent=message;}
  if(!key)return;
  const fieldNode=$("f_"+key),errorNode=$("error_f_"+key);
- if(fieldNode){fieldNode.setAttribute("aria-invalid","true");fieldNode.focus({preventScroll:true});fieldNode.scrollIntoView({block:"nearest",behavior:"auto"});}
+ if(fieldNode){fieldNode.setAttribute("aria-invalid","true");fieldNode.setAttribute("aria-describedby","error_f_"+key);fieldNode.focus({preventScroll:true});fieldNode.scrollIntoView({block:"nearest",behavior:"auto"});}
  if(errorNode){errorNode.textContent=message;errorNode.hidden=false;}
 }
 function isFormDirty(){
@@ -359,14 +365,14 @@ async function bootstrap(){
   state.user=user||null;
   if(!user){
    window.BWDMeetingPdfReader?.close?.();
-   state.member=null;state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};setVisible("loginSection",true);
+   state.member=null;clearPrivateView();setVisible("loginSection",true);
    setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountName").textContent="";return;
   }
   $("logout").hidden=false;$("accountName").textContent=user.email||"บัญชีผู้ใช้";
   const {data:membership,error:membershipError}=await state.client.from("workspace_members").select("role,active").eq("user_id",user.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(!membership?.active){
-    state.member=null;setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
+    state.member=null;clearPrivateView();setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
   }
   state.member=membership;
   const {data:profile}=await state.client.from("profiles").select("id,display_name").eq("id",user.id).maybeSingle();
@@ -375,7 +381,7 @@ async function bootstrap(){
   setVisible("workspace",true);setVisible("loginSection",false);setVisible("blocked",false);
   await reload();
  }catch(err){
-  state.user=null;state.member=null;
+  state.user=null;state.member=null;clearPrivateView();
   setVisible("workspace",false);setVisible("blocked",false);setVisible("loginSection",true);
   $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+(err.message||"เกิดข้อผิดพลาด");
  }
@@ -523,6 +529,7 @@ function render(){
  const title=$("workspaceTitle");
  if(title&&title.textContent!==pageTitle)title.textContent=pageTitle;
  document.querySelectorAll("[data-page]").forEach(n=>{n.classList.toggle("current",n.dataset.page===state.page);if(n.dataset.page===state.page)n.setAttribute("aria-current","page");else n.removeAttribute("aria-current");});
+ $("portalBody").setAttribute("aria-busy",String(state.loading));
  $("portalBody").innerHTML=state.loading?loadingMarkup():state.loadError?loadErrorMarkup():
   state.page==="overview"?renderOverview():state.page==="meetings"?renderMeetings():renderTasks();
 }
