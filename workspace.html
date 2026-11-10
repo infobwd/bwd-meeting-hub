@@ -7,10 +7,10 @@
   <title>BWD Meeting Hub — พื้นที่ทำงานร่วมกัน (R2)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./portal.css?v=ux07">
+  <link rel="stylesheet" href="./portal.css?v=ux08">
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./portal.js?v=ux07" defer></script>
+  <script src="./portal.js?v=ux08" defer></script>
   <script src="./meeting-pdf-reader.js?v=ux07" defer></script>
 </head>
 <body>
@@ -134,6 +134,19 @@
       </nav>
     </div>
   </dialog>
+  <dialog id="taskHistoryDialog" class="task-history-dialog" aria-labelledby="taskHistoryTitle">
+    <div class="task-history-shell">
+      <header class="task-history-header">
+        <div><p class="eyebrow">ติดตามภารกิจ</p><h2 id="taskHistoryTitle">ประวัติความคืบหน้าทั้งหมด</h2><p id="taskHistoryTaskName" class="muted"></p></div>
+        <button id="taskHistoryClose" type="button" class="button subtle" aria-label="ปิดประวัติงาน">ปิด</button>
+      </header>
+      <div id="taskHistoryBody" class="task-history-body" role="status" aria-live="polite"></div>
+      <div class="task-history-footer">
+        <span id="taskHistoryCount" class="muted"></span>
+        <button id="taskHistoryMore" type="button" class="button outline" hidden>โหลดเพิ่มเติม 20 รายการ</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
     <form method="dialog">
       <h2 id="confirmTitle">ยืนยันการดำเนินการ</h2>
@@ -145,6 +158,6 @@
     </form>
   </dialog>
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-  <footer>ข้อมูลในพื้นที่นี้ต้องได้รับอนุญาตก่อนเข้าถึง • ไม่มีระบบแจ้งเตือนอัตโนมัติใน R2</footer>
+  <footer class="site-footer">ข้อมูลในพื้นที่นี้ต้องได้รับอนุญาตก่อนเข้าถึง • ยังไม่มีการแจ้งเตือนภารกิจอัตโนมัติ</footer>
 </body>
 </html>
