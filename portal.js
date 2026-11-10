@@ -959,7 +959,8 @@ function renderMeeting(m){
    (editable?'<div class="meeting-cover-tools">'+button(m.cover_drive_file_id?"เปลี่ยนภาพปก":"เลือกภาพปกจาก Google Drive","coverPhoto",{"meeting-id":m.id})+'</div>':"")+'</div>'+
    jump+
    '<div id="bwd-agenda" class="meeting-target">'+
-   section("ระเบียบวาระ",agendaControls+agendas,
+   section("ระเบียบวาระ",agendaControls+agendas+
+     (m.meeting_mode!=="co_hosted"?'<div class="actions doc02-entry">'+button("จัดทำร่างและพรีวิววาระ A4","doc02Preview",{"meeting-id":m.id,"doc-type":"agenda"},"outline")+"</div>":""),
      editable&&m.status!=="ratified"?button("＋ เพิ่มวาระ","newAgenda",{"meeting-id":m.id},"primary"):"")+'</div>'+
    '<div id="bwd-documents" class="meeting-target">'+
    section("เอกสารประกอบการประชุม",docs.length?docs.map(meetingDocumentMarkup).join(""):empty("ยังไม่มีเอกสารประกอบ"),
@@ -969,6 +970,7 @@ function renderMeeting(m){
     (min?.body?'<p class="note">'+esc(min.body)+'</p>':empty("ยังไม่มีรายงานการประชุม"))+
     '<div class="notice-box">การอนุมัติในระบบเป็นการตรวจทานของผู้บริหาร ไม่แทนการรับรองรายงานตามระเบียบของคณะกรรมการสถานศึกษา</div>'+
     '<div class="actions">'+
+    (m.meeting_mode!=="co_hosted"?button("จัดทำร่างรายงานแบบที่ 11 และพรีวิว A4","doc02Preview",{"meeting-id":m.id,"doc-type":"minutes"},"outline"):"")+
     (editable&&(!min||min.status==="draft")?button("เขียน / แก้ไขรายงาน","minutes",{"meeting-id":m.id}):"")+
     (editable&&min?.status==="draft"&&min.body?button("ส่งให้ตรวจทาน","submitMinutes",{"meeting-id":m.id},"primary"):"")+
     (isAdmin()&&min?.status==="submitted"&&min.updated_by!==state.user?.id?button("ยืนยันตรวจทาน","approveMinutes",{"meeting-id":m.id},"primary")+button("ส่งกลับให้แก้ไข","rejectMinutes",{"meeting-id":m.id},"danger"):"")+
@@ -1367,6 +1369,20 @@ async function actionClick(ev){
 
   case "newAgenda":openModal("agenda",{meetingId:mid});break;
   case "decision":openModal("decision",{agendaId:aid});break;
+  case "doc02Preview":{
+    const current=meeting(mid);
+    if(!current||["externally_hosted","co_hosted"].includes(current.meeting_mode))
+      return statusMessage("ยังไม่รองรับการจัดทำเอกสารแบบที่ 11 สำหรับการประชุมประเภทนี้",true);
+    if(!window.BWDDoc02?.open)return statusMessage("เครื่องมือพรีวิวเอกสารยังโหลดไม่สำเร็จ โปรดรีเฟรชหน้าเว็บ",true);
+    await window.BWDDoc02.open({
+      meeting:current,agendas:state.agendas.filter(a=>a.meeting_id===mid),
+      documents:state.documents.filter(d=>d.meeting_id===mid),
+      oldMinutes:minute(mid),client:state.client,user:state.user,
+      editable:isEditor(mid)&&!["ratified","archived"].includes(current.status),
+      isAdmin:isAdmin(),type:b.dataset.docType==="minutes"?"minutes":"agenda"
+    });
+    break;
+  }
   case "minutes":openModal("minutes",{meetingId:mid});break;
   case "newTask":openModal("newTask",{meetingId:mid,agendaId:aid});break;
   case "coverPhoto":openModal("coverPhoto",{meetingId:mid});break;
@@ -1455,6 +1471,7 @@ function main(){
   if(entry)downloadBlob(previewFile.blob,entry.original_name||"evidence");
  });
  $("workspace").addEventListener("click",actionClick);
+ window.BWDDoc02?.init?.();
  const taskHistoryDialog=$("taskHistoryDialog");
  $("taskHistoryClose").addEventListener("click",closeTaskHistory);
  $("taskHistoryMore").addEventListener("click",()=>loadMoreTaskHistory());
