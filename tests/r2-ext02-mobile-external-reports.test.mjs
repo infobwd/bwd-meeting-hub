@@ -78,6 +78,7 @@ test("EXT-02: absent participant has no author/attachment action",()=>{
  seed();
  state.participations[0].attendance_status="absent";
  const rendered=renderMeeting(fakeExternal);
+ assert.match(rendered,/แก้ไข: ฉันเข้าร่วมจริง/);
  assert.doesNotMatch(rendered,/data-action="extReport"/);
  assert.doesNotMatch(rendered,/data-action="extDocument"/);
 });
