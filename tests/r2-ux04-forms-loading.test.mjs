@@ -22,7 +22,7 @@ vm.runInNewContext(testable,context,{timeout:2200,filename:"portal.js"});
 const {state,friendlyError,loadingMarkup,loadErrorMarkup,reload,render,clearPrivateView}=context.__ux04;
 
 function response(data=[],error=null){
- return {data,error,select(){return this;},order(){return this;},limit(){return this;}};
+ return {data,error,select(){return this;},is(){return this;},order(){return this;},limit(){return this;}};
 }
 function seed(){
  state.loading=false;state.loadError="";state.page="meetings";
