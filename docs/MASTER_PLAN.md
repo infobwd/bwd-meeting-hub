@@ -99,6 +99,7 @@ Source information from chat image is **unapproved preparation**, not a ratified
 ## 11. R2 display refinement — TDRS-informed implementation plan (2026-11-10)
 - **Plan documented (not implemented):** [docs/R2_TDRS_UI_DISPLAY_ALIGNMENT_PLAN_20261110.md](R2_TDRS_UI_DISPLAY_ALIGNMENT_PLAN_20261110.md).
 - **UX-00 source audit (no UI code changes):** [docs/R2_UX00_TDRS_SOURCE_BASELINE_20261110.md](R2_UX00_TDRS_SOURCE_BASELINE_20261110.md). Includes concrete source findings, prioritized risks, viewport/role acceptance matrix, and handoff for UX-01; real-device screenshots still pending.
+- **UX-01 app shell implemented (mobile/tablet QA pending):** [docs/R2_UX01_TDRS_APP_SHELL_ACCEPTANCE.md](R2_UX01_TDRS_APP_SHELL_ACCEPTANCE.md). Compact page-aware header, three-icon bottom navigation, BWD theme tokens, phone/touch/safe-area and iOS text refinements. No backend/Drive/meeting records changed. Next UX-02 meeting information architecture, then UX-03 task cards.
 - Compared `infobwd/tdrs` main application shell, bottom nav and bottom sheet, responsive typography/iOS zoom prevention, theme tokens, mobile dashboard, skeletons, toast, and PWA update UX.
 - Continue to use Nongkum Sports PDF.js reader as the **document-reader behavior reference**, while TDRS informs the app-wide visual and mobile interaction treatment.
 - Ordered gates: UX-00 current-screen audit → UX-01 app shell → UX-02 meetings → UX-03 tasks → UX-04 forms/status → UX-05 PDF viewer → UX-06 device/accessibility/role acceptance; optional UX-07 (PWA/theme) separately.
