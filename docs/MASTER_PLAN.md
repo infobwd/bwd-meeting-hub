@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.3 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.4 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -195,3 +195,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [ ] **School decision gate:** official document template/ratification rules, external-report ownership/reviewer, organization picklist, sign-off and custody policies are *not yet approved*; DOC-00 is a design draft, not a certified official template.
 - [ ] **Next recommended engineering work:** EXT-01/DOC-01 specification-to-migration review on a branch after school sign-off; additive schema/RPC only, existing five groups compatible, no existing record overwrite. Then EXT-02 mode-first mobile forms, EXT-03 cross-meeting knowledge→agenda/task links, DOC-02/03 preview and official export. Each step: test, PR, merge, protected backup, negative RLS tests; do not claim production acceptance from CI.
 - **This change is documentation-only:** no frontend, Supabase migrations/data, private staff records, Google Drive ACL, task ownership, meeting decision/ratification or notification delivery changed.
+
+## 20. EXT-01 + DOC-01 — Backend contract (2026-11-10)
+- **Backend SQL + source tests authored** in [EXT-01/DOC-01 acceptance plan](R2_EXT01_DOC01_BACKEND_ACCEPTANCE_20261110.md): `supabase/migrations/202611100009_external_meeting_participation.sql`, `202611100010_official_document_contract.sql`, `tests/r2-ext01-doc01-contract.test.mjs`.
+- **EXT-01:** nullable meeting hosting mode and agency details; a separate attendance/participation register (not meeting ACL); one private external attendance report per participating staff member with save/submit/withdraw/review, version checks, scoped audited RPC. Teachers can register their own external event without global meeting-editor rights. Only active accounts may be participants; no pre-invitation directory used.
+- **DOC-01:** optional opt-in `legacy5`/`school6` agenda template per meeting; storage limit now allows section 6 but old RPC still limited to 1–5; explicit `r2_doc_add_agenda` requires `school6` for sixth section. No auto-remap of the existing 13 topics. Structured official-minutes snapshot and ratification evidence tables are **not writable by browser yet**, pending approved school process and DOC-02/03.
+- **Release separation:** source and database backend changes do **not** mean screens, PDF/Docs export, committee ratification, authorization testing or school go-live are complete. Keep existing R2 frontend unchanged through EXT-01/DOC-01. Before production use: verify CI, live schema/permissions and backup/restore, independent accounts for negative RLS role tests, school template sign-off.
+- **Next:** EXT-02 mode-first mobile forms and DOC-02 official-document draft previews, once backend applied and accepted; EXT-03 evidence-to-agenda/task provenance after, DOC-03 authorized export/ratification workflow after school sign-off.
