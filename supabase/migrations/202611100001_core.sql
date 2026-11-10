@@ -25,7 +25,7 @@ create table if not exists public.meetings (
   kind text not null check (kind in ('board','teacher','management','working','community','other')),
   scheduled_on date,
   location text not null default '' check (char_length(location) <= 180),
-  status text not null default 'draft' check (status in ('draft','scheduled','held','minutes_review','ratified','archived')),
+  status text not null default 'draft' check (status in ('draft','scheduled','held','minutes_review','reviewed','ratified','archived')),
   created_by uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
