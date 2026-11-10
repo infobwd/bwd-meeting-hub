@@ -49,9 +49,20 @@ test("private task evidence is not public",()=>{
  assert.ok(operations.includes("o.owner_id=auth.uid()::text"));
 });
 
-test("authenticated portal is locked until configuration",()=>{
- assert.ok(config.includes('url: ""'));
- assert.ok(config.includes('publishableKey: ""'));
+test("authenticated portal requires a safe public config and workspace membership",()=>{
+ // R2 can be unconfigured (fresh clone) or connected (browser publishable key).
+ // A public key is not authorization; the real security boundary is Supabase RLS.
+ const urlMatch=config.match(/url:\s*"([^"]*)"/);
+ const keyMatch=config.match(/publishableKey:\s*"([^"]*)"/);
+ assert.ok(urlMatch,"missing public project URL");
+ assert.ok(keyMatch,"missing public publishable key");
+ const [,url]=urlMatch;
+ const [,key]=keyMatch;
+ assert.equal(Boolean(url),Boolean(key),"URL and publishable key must be configured together");
+ if(url){
+  assert.match(url,/^https:\/\/[a-z0-9-]+\.supabase\.co$/,"unexpected Supabase project URL");
+  assert.match(key,/^sb_publishable_[a-zA-Z0-9_-]+$/,"frontend must use a public publishable key, not a secret or service key");
+ }
  assert.ok(html.includes('id="setup"'));
  assert.ok(html.includes('id="loginForm"'));
  assert.ok(html.includes('type="password"'));
@@ -60,7 +71,8 @@ test("authenticated portal is locked until configuration",()=>{
  assert.ok(portal.includes('from("workspace_members")'));
  assert.ok(portal.includes("state.client.rpc"));
  assert.ok(!portal.includes('window.localStorage.setItem('));
- assert.ok(!config.includes("eyJ")); // no JWT pasted into tracked config
+ assert.ok(!config.includes("eyJ")); // no legacy JWT pasted into tracked config
+ assert.ok(!config.includes("sb_secret_"));
 });
 
 test("R2 code supports minutes, tasks, evidence, cross-meeting continuity",()=>{
