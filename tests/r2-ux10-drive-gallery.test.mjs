@@ -52,7 +52,7 @@ test("UX-10 valid folder URLs only; editors can reconfigure for another meeting"
 });
 test("UX-10 overview task summaries are compact while full task page retains evidence/history",()=>{
  seed();
- const compact=taskCard(state.tasks[0]);
+ const compact=taskCard(state.tasks[0],false);
  assert.match(compact,/task-card-overview/);
  assert.match(compact,/ดูรายละเอียดและประวัติ/);
  assert.doesNotMatch(compact,/details class="task-details"/);
