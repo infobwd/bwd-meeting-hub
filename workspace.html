@@ -7,11 +7,11 @@
   <title>BWD Meeting Hub — พื้นที่ทำงานร่วมกัน (R2)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./portal.css?v=doc02">
+  <link rel="stylesheet" href="./portal.css?v=doc02ux">
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./doc02.js?v=doc02" defer></script>
-  <script src="./portal.js?v=doc02" defer></script>
+  <script src="./doc02.js?v=doc02ux" defer></script>
+  <script src="./portal.js?v=doc02ux" defer></script>
   <script src="./meeting-pdf-reader.js?v=ux07" defer></script>
 </head>
 <body>
@@ -81,13 +81,17 @@
         <button type="button" id="doc02Close" class="button subtle" aria-label="ปิดหน้าพรีวิวร่างเอกสาร">✕ ปิด</button>
       </header>
       <nav id="doc02Tabs" class="doc02-tabs" role="tablist" aria-label="เลือกประเภทเอกสาร"></nav>
+      <div id="doc02ViewSwitch" class="doc02-view-switch" role="group" aria-label="เลือกมุมมองเอกสาร">
+        <button type="button" class="doc02-view-btn" data-doc02-view="edit" aria-pressed="true">แก้ไขข้อมูล</button>
+        <button type="button" class="doc02-view-btn" data-doc02-view="preview" aria-pressed="false">พรีวิว A4</button>
+      </div>
       <div id="doc02Status" class="doc02-state" role="status"></div>
       <p id="doc02Error" class="ux04-form-error" role="alert" hidden></p>
       <p id="doc02Success" class="mini" role="status" aria-live="polite"></p>
       <div class="doc02-columns">
         <section class="doc02-edit-pane" aria-label="ข้อมูลร่างเอกสาร">
           <h3>ข้อมูลที่ใช้จัดทำร่าง</h3>
-          <div id="doc02Editor"></div>
+          <div id="doc02Editor" class="doc02-editor-scroll"></div>
           <div id="doc02Actions"></div>
         </section>
         <section class="doc02-preview-pane" aria-label="ตัวอย่างเอกสารขนาด A4">
