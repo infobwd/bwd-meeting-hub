@@ -14,10 +14,10 @@ const sections={"1":"ประธานแจ้งให้ทราบ","2":"�
 const state={
   client:null,user:null,member:null,profile:null,meetings:[],access:[],agendas:[],decisions:[],
   minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],
-  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false
+  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false,loadError:""
 };
 const modal=$("modal"), actionForm=$("actionForm");
-let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus;
+let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus,formSnapshot="",formSubmitting=false,discardPromptActive=false;
 let previewObjectUrl=null,previewFile=null,previewReturnFocus=null,previewRequestId=0;
 const meetingStates={
   draft:{label:"ฉบับร่าง",tone:"gold"},
@@ -69,6 +69,26 @@ function isEditor(meetingId){return isAdmin()||state.access.some(a=>a.meeting_id
 function canReview(taskId){return isAdmin()||taskLinks(taskId).some(l=>isEditor(l.meeting_id));}
 function isOwner(t){return t.owner_id===state.user?.id;}
 function isStaff(){return ["admin","secretary","member"].includes(state.member?.role);}
+function friendlyError(error){
+ const raw=String(error?.message||error||"").toLowerCase();
+ if(/version conflict|conflict/.test(raw))return "ข้อมูลมีการเปลี่ยนแปลงระหว่างที่เปิดหน้านี้ กรุณาโหลดข้อมูลใหม่ก่อนทำรายการอีกครั้ง";
+ if(/access denied|permission|not authorized|forbidden|row.level|jwt|401|403/.test(raw))return "บัญชีนี้ไม่มีสิทธิ์ดำเนินการ โปรดตรวจสอบสิทธิ์กับผู้ดูแล";
+ if(/network|fetch|timeout|offline|failed to/.test(raw))return "เชื่อมต่อข้อมูลไม่ได้ โปรดตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง";
+ return "ดำเนินการไม่สำเร็จ โปรดลองอีกครั้ง หากยังพบปัญหาให้แจ้งผู้ดูแล";
+}
+function loadingMarkup(){
+ return '<div class="ux04-loading" role="status" aria-live="polite" aria-label="กำลังโหลดข้อมูล">'+
+   '<p>กำลังโหลดข้อมูลที่คุณมีสิทธิ์เข้าถึง…</p>'+
+   '<div class="ux04-skeleton-grid" aria-hidden="true">'+
+     '<div class="ux04-skeleton ux04-skeleton-wide"></div><div class="ux04-skeleton"></div>'+
+     '<div class="ux04-skeleton"></div><div class="ux04-skeleton ux04-skeleton-wide"></div>'+
+   '</div></div>';
+}
+function loadErrorMarkup(){
+ return '<div class="ux04-load-error" role="alert"><h2>โหลดข้อมูลยังไม่สำเร็จ</h2>'+
+   '<p>'+esc(state.loadError||"โปรดตรวจการเชื่อมต่อแล้วลองอีกครั้ง")+'</p>'+
+   button("ลองโหลดข้อมูลอีกครั้ง","retryLoad",{},"primary")+'</div>';
+}
 function statusMessage(message,error=false){
   // Keep the legacy inline status node for source compatibility, but show feedback as a toast.
   const node=$("feedback");node.textContent=message;node.classList.toggle("error",error);node.hidden=true;
@@ -92,6 +112,12 @@ function statusMessage(message,error=false){
   toastTimer=setTimeout(()=>region.replaceChildren(),error?8000:4500);
 }
 function setVisible(id,visible){$(id).hidden=!visible;}
+function clearPrivateView(){
+ for(const key of ["meetings","access","agendas","decisions","minutes","tasks","links","updates","evidence","profiles","documents"])
+  state[key]=[];
+ state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};
+ state.loadError="";state.loading=false;
+}
 function setPage(page){
   if(!["overview","meetings","tasks"].includes(page))return;
   state.page=page;state.activeMeeting=null;statusMessage("");
@@ -117,7 +143,33 @@ function meetingsOptions(selected="",editorOnly=false){
  return state.meetings.filter(m=>!editorOnly||isEditor(m.id)).map(m=>'<option value="'+esc(m.id)+'" '+(selected===m.id?"selected":"")+'>'+esc(m.title)+'</option>').join("");
 }
 function field(label,key,content,help=""){
- return '<div class="field"><label for="f_'+key+'">'+esc(label)+'</label>'+content+(help?'<div class="mini">'+esc(help)+'</div>':'')+'</div>';
+ return '<div class="field"><label for="f_'+key+'">'+esc(label)+'</label>'+content+
+  (help?'<div class="mini">'+esc(help)+'</div>':'')+
+  '<p class="field-error" id="error_f_'+esc(key)+'" role="alert" hidden></p></div>';
+}
+function clearFieldErrors(){
+ document.querySelectorAll("#modalFields .field-error").forEach(node=>{node.textContent="";node.hidden=true;});
+ const summary=$("modalMessage");if(summary){summary.textContent="";summary.hidden=true;}
+ document.querySelectorAll("#modalFields [aria-invalid]").forEach(node=>{node.removeAttribute("aria-invalid");node.removeAttribute("aria-describedby");});
+}
+function showFormError(message,key=""){
+ const summary=$("modalMessage");
+ if(summary){summary.hidden=false;summary.textContent=message;}
+ if(!key)return;
+ const fieldNode=$("f_"+key),errorNode=$("error_f_"+key);
+ if(fieldNode){fieldNode.setAttribute("aria-invalid","true");fieldNode.setAttribute("aria-describedby","error_f_"+key);fieldNode.focus({preventScroll:true});fieldNode.scrollIntoView({block:"nearest",behavior:"auto"});}
+ if(errorNode){errorNode.textContent=message;errorNode.hidden=false;}
+}
+function isFormDirty(){
+ return modal.open && !formSubmitting && JSON.stringify(Array.from(new FormData(actionForm).entries()))!==formSnapshot;
+}
+function fitModalViewport(){
+ if(!modal.open||!window.visualViewport||!window.matchMedia("(max-width: 900px)").matches)return;
+ const view=window.visualViewport;
+ const available=Math.max(170,Math.floor(view.height-12));
+ const bottom=Math.max(0,Math.round(window.innerHeight-view.height-view.offsetTop));
+ modal.style.setProperty("--ux04-sheet-height",available+"px");
+ modal.style.setProperty("--ux04-sheet-bottom",bottom+"px");
 }
 function input(key,type="text",value="",required=false,max=200){
  return '<input id="f_'+key+'" name="'+key+'" type="'+type+'" value="'+esc(value??"")+'" '+(required?"required":"")+' maxlength="'+max+'">';
@@ -148,7 +200,19 @@ function meetingDocumentMarkup(d){
     '<div class="actions">'+button("อ่าน PDF ในเว็บ","readMeetingPdf",{"document-id":d.id},"primary")+
     '<a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิดใน Google Drive</a></div></div>';
 }
-function closeModal(){if(modal.open)modal.close();}
+async function closeModal({force=false}={}){
+ if(!modal.open)return;
+ if(formSubmitting&&!force)return;
+ if(!force&&isFormDirty()){
+   if(discardPromptActive)return;
+   discardPromptActive=true;
+   let discard=false;
+   try{discard=await confirmAction("มีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดโดยไม่บันทึกหรือไม่?");}
+   finally{discardPromptActive=false;}
+   if(!discard)return;
+ }
+ if(modal.open)modal.close();
+}
 async function confirmAction(message){
   const dialog=$("confirmDialog");
   $("confirmMessage").textContent=message;
@@ -245,9 +309,13 @@ function openModal(mode,ctx={}){
   body=field("ชื่อแสดง *","displayName",input("displayName","text",state.profile?.display_name||"",true,160));
  }else{return;}
  $("modalTitle").textContent=label;$("modalFields").innerHTML=body;
- $("submitModal").disabled=false;
+ clearFieldErrors();
+ formSubmitting=false;discardPromptActive=false;
+ formSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
+ $("submitModal").disabled=false;$("submitModal").textContent="บันทึก";
  modalReturnFocus=document.activeElement;
  modal.showModal();
+ fitModalViewport();
  if(window.matchMedia("(min-width: 901px)").matches)modal.querySelector("input,select,textarea")?.focus();
  else $("modalTitle").focus({preventScroll:true});
 }
@@ -257,27 +325,37 @@ async function rpc(method,args){
  return data;
 }
 async function reload(){
- const c=state.client;
- const queries=[
-  c.from("meetings").select("*").order("created_at",{ascending:false}),
-  c.from("meeting_access").select("*"),
-  c.from("agendas").select("*").order("section").order("position"),
-  c.from("decisions").select("*"),
-  c.from("minutes").select("*"),
-  c.from("tasks").select("*").order("updated_at",{ascending:false}),
-  c.from("task_meeting_links").select("*"),
-  c.from("profiles").select("id,display_name"),
-  c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
-  c.from("task_evidence").select("*").order("created_at",{ascending:false}),
-  c.from("meeting_documents").select("*").order("added_at",{ascending:false})
- ];
- const results=await Promise.all(queries);
- const idx=results.findIndex(x=>x.error);
- if(idx!==-1)throw results[idx].error;
- [state.meetings,state.access,state.agendas,state.decisions,state.minutes,
-  state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents]=results.map(x=>x.data||[]);
- if(state.activeMeeting&&!meeting(state.activeMeeting))state.activeMeeting=null;
+ state.loading=true;state.loadError="";
  render();
+ try{
+  const c=state.client;
+  const queries=[
+   c.from("meetings").select("*").order("created_at",{ascending:false}),
+   c.from("meeting_access").select("*"),
+   c.from("agendas").select("*").order("section").order("position"),
+   c.from("decisions").select("*"),
+   c.from("minutes").select("*"),
+   c.from("tasks").select("*").order("updated_at",{ascending:false}),
+   c.from("task_meeting_links").select("*"),
+   c.from("profiles").select("id,display_name"),
+   c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
+   c.from("task_evidence").select("*").order("created_at",{ascending:false}),
+   c.from("meeting_documents").select("*").order("added_at",{ascending:false})
+  ];
+  const results=await Promise.all(queries);
+  const error=results.find(x=>x.error)?.error;
+  if(error)throw error;
+  [state.meetings,state.access,state.agendas,state.decisions,state.minutes,
+   state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents]=results.map(x=>x.data||[]);
+  if(state.activeMeeting&&!meeting(state.activeMeeting))state.activeMeeting=null;
+  return true;
+ }catch(error){
+  state.loadError=friendlyError(error);
+  return false;
+ }finally{
+  state.loading=false;
+  render();
+ }
 }
 async function bootstrap(){
  if(!state.client)return;
@@ -287,14 +365,14 @@ async function bootstrap(){
   state.user=user||null;
   if(!user){
    window.BWDMeetingPdfReader?.close?.();
-   state.member=null;state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};setVisible("loginSection",true);
+   state.member=null;clearPrivateView();setVisible("loginSection",true);
    setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountName").textContent="";return;
   }
   $("logout").hidden=false;$("accountName").textContent=user.email||"บัญชีผู้ใช้";
   const {data:membership,error:membershipError}=await state.client.from("workspace_members").select("role,active").eq("user_id",user.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(!membership?.active){
-    state.member=null;setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
+    state.member=null;clearPrivateView();setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
   }
   state.member=membership;
   const {data:profile}=await state.client.from("profiles").select("id,display_name").eq("id",user.id).maybeSingle();
@@ -303,9 +381,9 @@ async function bootstrap(){
   setVisible("workspace",true);setVisible("loginSection",false);setVisible("blocked",false);
   await reload();
  }catch(err){
-  state.user=null;state.member=null;
+  state.user=null;state.member=null;clearPrivateView();
   setVisible("workspace",false);setVisible("blocked",false);setVisible("loginSection",true);
-  $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+(err.message||"เกิดข้อผิดพลาด");
+  $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+friendlyError(err);
  }
 }
 function meetingCard(m){
@@ -451,21 +529,37 @@ function render(){
  const title=$("workspaceTitle");
  if(title&&title.textContent!==pageTitle)title.textContent=pageTitle;
  document.querySelectorAll("[data-page]").forEach(n=>{n.classList.toggle("current",n.dataset.page===state.page);if(n.dataset.page===state.page)n.setAttribute("aria-current","page");else n.removeAttribute("aria-current");});
- $("portalBody").innerHTML=state.page==="overview"?renderOverview():state.page==="meetings"?renderMeetings():renderTasks();
+ $("portalBody").setAttribute("aria-busy",String(state.loading));
+ $("portalBody").innerHTML=state.loading?loadingMarkup():state.loadError?loadErrorMarkup():
+  state.page==="overview"?renderOverview():state.page==="meetings"?renderMeetings():renderTasks();
 }
 async function runMutation(method,args,success="บันทึกเรียบร้อย"){
  try{
   statusMessage("");
   await rpc(method,args);
-  closeModal();await reload();statusMessage(success);
- }catch(e){statusMessage("ไม่สามารถบันทึกได้: "+(e.message||"ลองใหม่อีกครั้ง"),true);}
+ }catch(error){
+  const message=friendlyError(error);
+  if(modal.open)showFormError(message);
+  statusMessage(message,true);
+  return false;
+ }
+ await closeModal({force:true});
+ const updated=await reload();
+ statusMessage(updated?success:"บันทึกข้อมูลแล้ว แต่ยังแสดงรายการล่าสุดไม่ได้ กรุณากดลองโหลดข้อมูลอีกครั้ง",!updated);
+ return true;
 }
 async function submitForm(ev){
- ev.preventDefault();const fd=new FormData(actionForm);const g=(key,max=200)=>readStr(fd,key,max);
+ ev.preventDefault();
+ if(formSubmitting||!actionForm.reportValidity())return;
+ formSubmitting=true;
+ clearFieldErrors();
+ const fd=new FormData(actionForm);const g=(key,max=200)=>readStr(fd,key,max);
  const mid=editCtx.meetingId,tid=editCtx.taskId;
  const t=state.tasks.find(t=>t.id===tid);
  const mode=editMode;
  $("submitModal").disabled=true;
+ $("submitModal").textContent="กำลังบันทึก…";
+ $("submitModal").setAttribute("aria-busy","true");
  let method=null,args=null,msg="บันทึกเรียบร้อย";
  try{
  switch(mode){
@@ -475,7 +569,9 @@ async function submitForm(ev){
   case "minutes":method="r2_save_minutes";args={p_meeting_id:mid,p_body:g("body",8000),p_expected_version:Number(g("version"))};msg="บันทึกรายงานฉบับร่างแล้ว";break;
   case "minutesReview":method="r2_review_minutes";args={p_meeting_id:mid,p_approve:editCtx.approve,p_note:g("note",2000)};break;
   case "newTask":method="r2_create_task";args={p_meeting_id:g("meetingId",36),p_title:g("title",200),p_owner_id:g("ownerId",36)||null,p_due_on:g("dueOn",10)||null,p_description:g("description",8000),p_agenda_id:g("agendaId",36)||null};
-    if(args.p_agenda_id&&agenda(args.p_agenda_id)?.meeting_id!==args.p_meeting_id){statusMessage("วาระต้องอยู่ในการประชุมที่เลือก",true);return;}break;
+    if(args.p_agenda_id&&agenda(args.p_agenda_id)?.meeting_id!==args.p_meeting_id){
+      showFormError("วาระต้องอยู่ในการประชุมที่เลือก","agendaId");return;
+    }break;
   case "taskState":method="r2_change_task";args={p_task_id:tid,p_new_status:g("status"),p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskReview":method="r2_review_task";args={p_task_id:tid,p_approve:editCtx.approve,p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskOwner":method="r2_set_task_owner";args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version};break;
@@ -484,7 +580,7 @@ async function submitForm(ev){
   case "access":method="r2_add_access";args={p_meeting_id:mid,p_user_id:g("userId",36),p_role:g("role",20)};break;
   case "driveDoc":{
     const fileId=parseDriveFileId(g("driveUrl",900));
-    if(!fileId){statusMessage("โปรดใส่ลิงก์ไฟล์ Google Drive ที่ถูกต้อง (ไม่ใช่ลิงก์โฟลเดอร์)",true);return;}
+    if(!fileId){showFormError("โปรดใส่ลิงก์ไฟล์ Google Drive ที่ถูกต้อง ไม่ใช่ลิงก์โฟลเดอร์","driveUrl");return;}
     method="r2_attach_drive_document";
     args={p_meeting_id:mid,p_drive_file_id:fileId,p_title:g("title",200),p_document_type:g("documentType",40)};
     msg="ผูกเอกสารเข้ากับการประชุมแล้ว";
@@ -495,7 +591,14 @@ async function submitForm(ev){
  }
  if(!method)return;
  await runMutation(method,args,msg);
- }finally{$("submitModal").disabled=false;}
+ }catch(error){
+  showFormError(friendlyError(error));
+ }finally{
+  formSubmitting=false;
+  $("submitModal").disabled=false;
+  $("submitModal").textContent="บันทึก";
+  $("submitModal").removeAttribute("aria-busy");
+ }
 }
 async function uploadEvidence(file,taskId,input){
  const types={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
@@ -506,8 +609,9 @@ async function uploadEvidence(file,taskId,input){
   const {error:uploadError}=await state.client.storage.from("meeting-evidence").upload(path,file,{contentType:file.type,upsert:false});
   if(uploadError)throw uploadError;
   await rpc("r2_register_evidence",{p_task_id:taskId,p_object_path:path,p_original_name:file.name.slice(0,200)});
-  await reload();statusMessage("แนบหลักฐานในพื้นที่ส่วนตัวแล้ว");
- }catch(e){statusMessage("แนบหลักฐานไม่สำเร็จ: "+(e.message||"ลองใหม่"),true);}
+  const refreshed=await reload();
+  statusMessage(refreshed?"แนบหลักฐานในพื้นที่ส่วนตัวแล้ว":"แนบหลักฐานสำเร็จแล้ว แต่ยังโหลดรายการล่าสุดไม่ได้ กรุณาลองโหลดข้อมูลอีกครั้ง",!refreshed);
+ }catch(e){statusMessage("แนบหลักฐานไม่สำเร็จ: "+friendlyError(e),true);}
  finally{input.disabled=false;input.value="";}
 }
 function fileKind(path){
@@ -607,6 +711,7 @@ async function actionClick(ev){
  const b=ev.target.closest("[data-action]");if(!b)return;
  const act=b.dataset.action,mid=b.dataset.meetingId,tid=b.dataset.taskId,aid=b.dataset.agendaId;
  switch(act){
+  case "retryLoad":await reload();break;
   case "goMeetings":setPage("meetings");break;
   case "goTasks":setPage("tasks");break;
   case "openMeeting":state.meetingListScroll=window.scrollY;state.page="meetings";state.activeMeeting=mid;render();window.scrollTo(0,0);break;
@@ -714,9 +819,32 @@ function main(){
   if(ev.target.dataset.evidenceUpload){const file=ev.target.files?.[0];if(file)uploadEvidence(file,ev.target.dataset.evidenceUpload,ev.target);}
  });
  modal.addEventListener("click",event=>{if(event.target===modal)closeModal();});
- modal.addEventListener("close",()=>{if(modalReturnFocus?.isConnected)modalReturnFocus.focus({preventScroll:true});modalReturnFocus=null;});
- $("closeModal").addEventListener("click",closeModal);
- $("cancelModal").addEventListener("click",closeModal);
+ modal.addEventListener("cancel",event=>{event.preventDefault();closeModal();});
+ modal.addEventListener("close",()=>{
+   modal.style.removeProperty("--ux04-sheet-height");
+   modal.style.removeProperty("--ux04-sheet-bottom");
+   formSubmitting=false;discardPromptActive=false;
+   if(modalReturnFocus?.isConnected)modalReturnFocus.focus({preventScroll:true});
+   modalReturnFocus=null;
+ });
+ const viewport=window.visualViewport;
+ if(viewport){
+   viewport.addEventListener("resize",fitModalViewport,{passive:true});
+   viewport.addEventListener("scroll",fitModalViewport,{passive:true});
+ }
+ modal.addEventListener("focusin",event=>{
+   if(!event.target?.matches?.("input,select,textarea"))return;
+   window.setTimeout(()=>{
+     if(!modal.open)return;
+     fitModalViewport();
+     event.target.scrollIntoView({block:"nearest",behavior:"auto"});
+   },100);
+ });
+ $("closeModal").addEventListener("click",()=>closeModal());
+ $("cancelModal").addEventListener("click",()=>closeModal());
+ actionForm.addEventListener("input",event=>{
+   if(event.target?.matches?.("input,select,textarea"))clearFieldErrors();
+ });
  actionForm.addEventListener("submit",submitForm);
  bootstrap();
 }

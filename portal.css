@@ -423,3 +423,47 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
  .task-details .task-detail-body{display:block}
  .task-details:not([open]) .task-detail-body{display:none}
 }
+
+/* UX-04 — accessible form sheets, iPhone keyboard viewport, skeleton/retry and toast.
+   The browser's native dialog focus trap, Supabase RPC/RLS and private files are unchanged. */
+#modal.form-sheet{overflow:hidden;padding:0;min-width:0}
+#modal.form-sheet form{display:flex;flex-direction:column;min-height:0;max-height:min(85dvh,780px)}
+#modal.form-sheet .modal-head{flex:none;min-width:0;margin:0;padding:18px 18px 12px;border-bottom:1px solid #e3ecf5}
+#modal.form-sheet .modal-head h2{min-width:0;overflow-wrap:anywhere;line-height:1.45}
+#modal.form-sheet #modalFields{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:12px 18px;-webkit-overflow-scrolling:touch}
+#modal.form-sheet .modal-actions{flex:none;margin:0;padding:12px 18px;border-top:1px solid #e3ecf5;background:#fff}
+#modal.form-sheet .modal-actions button,#modal.form-sheet .modal-head button{min-height:44px}
+#modal.form-sheet .modal-actions button[aria-busy=true]{cursor:progress}
+#modal.form-sheet .field input:not([type=checkbox]),#modal.form-sheet .field select,#modal.form-sheet .field textarea{font-size:16px;min-height:44px}
+#modal.form-sheet .field textarea{min-height:105px}
+#modal.form-sheet .field [aria-invalid=true]{border-color:#c4533a;box-shadow:0 0 0 1px #c4533a}
+#modal.form-sheet .field-error{margin:5px 0 0;font-size:12px;color:#9e342c;line-height:1.5}
+#modal.form-sheet .ux04-form-error{flex:none;margin:0;padding:10px 18px;border-bottom:1px solid #ebc5bf;background:#fff0ed;color:#963929;font-size:13px;line-height:1.55}
+.ux04-loading{padding:20px 2px;min-height:180px}
+.ux04-loading>p{font-size:13px;color:#526b84;margin:0 0 14px}
+.ux04-skeleton-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.ux04-skeleton{height:92px;background:linear-gradient(90deg,#e6edf6 0%,#f6f8fc 50%,#e6edf6 100%);background-size:200% 100%;border-radius:15px;animation:ux04-shimmer 1.4s linear infinite}
+.ux04-skeleton-wide{height:125px}
+@keyframes ux04-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+.ux04-load-error{border:1px solid #f0cec2;background:#fff9f6;border-radius:18px;padding:22px;color:#754233;max-width:660px}
+.ux04-load-error h2{font-size:19px;margin:0 0 6px}
+.ux04-load-error p{font-size:14px;line-height:1.6;margin:0 0 16px}
+.ux04-load-error button{min-height:44px}
+.toast-close{min-width:44px;min-height:44px}
+@media(max-width:900px){
+ #modal.form-sheet{position:fixed;inset:auto 0 var(--ux04-sheet-bottom,0px) 0;
+   margin:0;width:100%;max-width:100%;max-height:min(88svh,var(--ux04-sheet-height,88svh));
+   border-radius:24px 24px 0 0;overflow:hidden}
+ #modal.form-sheet form{height:auto;max-height:min(88svh,var(--ux04-sheet-height,88svh));min-height:0}
+ #modal.form-sheet .modal-head{padding:27px 16px 12px}
+ #modal.form-sheet #modalFields{padding:8px 16px 12px}
+ #modal.form-sheet .modal-actions{padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+ #modal.form-sheet .modal-actions #submitModal{min-height:48px}
+ #modal.form-sheet .modal-actions #cancelModal{min-height:48px}
+ #modal.form-sheet .field input:not([type=checkbox]),#modal.form-sheet .field select,#modal.form-sheet .field textarea{font-size:16px}
+ .ux04-skeleton-grid{grid-template-columns:minmax(0,1fr);gap:10px}
+ .ux04-skeleton,.ux04-skeleton-wide{height:86px}
+ .ux04-load-error{padding:16px}
+}
+@media(prefers-reduced-motion:reduce){.ux04-skeleton{animation:none}}
+@media print{.ux04-loading,.ux04-load-error,#modal.form-sheet{display:none!important}}
