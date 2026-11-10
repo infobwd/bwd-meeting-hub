@@ -294,3 +294,71 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
 @media (prefers-reduced-motion: reduce) {
   .tabs .tab { transition:none; }
 }
+
+/* UX-02 — meeting information architecture: compact overview, true statuses,
+ * five native agenda disclosure groups, quick document entry and page anchors.
+ * Scoped to meeting pages; does not alter PDF, task evidence or permissions. */
+.meeting-list-head { margin-bottom:14px; }
+.meeting-list-head h2 { font-size:18px; }
+.meeting-cards .meeting-card { gap:11px; align-content:start; }
+.meeting-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.meeting-type { color:#2c527a; background:#edf4fc; padding:5px 10px; border-radius:99px; font-size:12px; line-height:1.5; }
+.meeting-card .status { white-space:normal; text-align:center; }
+.meeting-card .meeting-date { color:#355775; font-size:13px; font-weight:400; line-height:1.6; overflow-wrap:anywhere; }
+.meeting-card .meeting-counts { font-size:12px; color:#5b718a; }
+.meeting-card .actions .button { min-height:44px; }
+.meeting-detail { min-width:0; }
+.meeting-back { margin:0 0 12px; }
+.meeting-detail-head { background:#fff; border:1px solid var(--bwd-border,#dce5f0); border-radius:16px; padding:18px 20px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.meeting-detail-head > div:first-child { flex:1; min-width:0; }
+.meeting-detail-head h2 { font-size:clamp(19px,2.7vw,24px); line-height:1.4; overflow-wrap:anywhere; margin:1px 0 8px; }
+.meeting-detail-head .meeting-date { font-size:13px; color:#506987; overflow-wrap:anywhere; }
+.meeting-badges { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; max-width:45%; }
+.meeting-badges .status,.meeting-badges .role-pill { white-space:normal; text-align:center; line-height:1.4; }
+.meeting-jump { display:flex; align-items:center; gap:8px; padding:4px 0 14px; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; }
+.meeting-jump a { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; border:1px solid #c7d7e9; background:#fff; color:#214d7a; padding:9px 14px; border-radius:99px; min-height:44px; font-size:13px; text-decoration:none; font-weight:500; }
+.meeting-jump a:focus-visible { outline:var(--bwd-focus,3px solid #efc64a); outline-offset:2px; }
+.meeting-jump a:hover { background:#ecf3fb; }
+.meeting-target { scroll-margin-top:18px; min-width:0; }
+.meeting-target .panel { overflow-wrap:anywhere; }
+.agenda-controls { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+.agenda-controls button { min-height:44px; }
+.agenda-groups { display:grid; gap:10px; min-width:0; }
+.agenda-group { border:1px solid #dce5ee; background:#fff; border-radius:13px; min-width:0; overflow:hidden; }
+.agenda-group[open] { border-color:#bdcfe4; box-shadow:0 3px 12px #1737580b; }
+.agenda-group summary { cursor:pointer; display:flex; gap:10px; align-items:center; min-height:56px; padding:12px 14px; list-style:none; color:#1a406b; }
+.agenda-group summary::-webkit-details-marker { display:none; }
+.agenda-group summary:focus-visible { outline:var(--bwd-focus,3px solid #efc64a); outline-offset:-3px; border-radius:12px; }
+.agenda-group .agenda-number { flex:none; color:#785e19; background:#fff4d9; font-size:12px; font-weight:600; border-radius:9px; padding:5px 8px; }
+.agenda-group .agenda-heading { flex:1; font-weight:500; font-size:15px; min-width:0; overflow-wrap:anywhere; }
+.agenda-group .agenda-count { flex:none; color:#6d7c8d; font-size:12px; white-space:nowrap; }
+.agenda-group .agenda-chevron { flex:none; font-size:21px; line-height:1; color:#526e89; transition:transform .15s ease; }
+.agenda-group[open] .agenda-chevron { transform:rotate(180deg); }
+.agenda-entries { padding:0 14px 6px; border-top:1px solid #e8edf4; }
+.agenda-entry { padding:15px 0; border-bottom:1px solid #e8edf4; }
+.agenda-entry:last-child { border-bottom:0; }
+.agenda-entry h3 { margin:0 0 7px; font-size:15px; font-weight:500; line-height:1.5; }
+.agenda-entry .agenda-notes { font-size:13px; line-height:1.7; white-space:pre-wrap; color:#445d77; margin:0 0 10px; }
+.agenda-entry .actions { margin-top:10px; }
+.meeting-target .panel>.flex-between { gap:10px; }
+@media(max-width:700px) {
+ .meeting-list-head { align-items:flex-start; }
+ .meeting-list-head .button { min-height:44px; }
+ .meeting-detail-head { flex-direction:column; padding:15px; gap:9px; }
+ .meeting-badges { justify-content:flex-start; max-width:none; }
+ .meeting-detail-head h2 { font-size:19px; }
+ .meeting-jump { margin-inline:-2px; padding-bottom:12px; }
+ .meeting-jump a { font-size:12px; padding:8px 12px; }
+ .agenda-controls { justify-content:flex-start; }
+ .agenda-group summary { flex-wrap:wrap; gap:7px; }
+ .agenda-group .agenda-heading { flex:1 1 calc(100% - 125px); font-size:14px; }
+ .agenda-group .agenda-count { margin-left:auto; }
+ .agenda-entries { padding-inline:12px; }
+ .meeting-cards { grid-template-columns:minmax(0,1fr); }
+}
+@media(prefers-reduced-motion:reduce){.agenda-group .agenda-chevron{transition:none}}
+@media print{
+ .meeting-jump,.agenda-controls,.meeting-back { display:none!important; }
+ .agenda-group .agenda-entries { display:block!important; }
+ .agenda-group { break-inside:avoid; }
+}
