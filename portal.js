@@ -555,7 +555,7 @@ async function actionClick(ev){
         const {data,error}=await state.client.auth.getSession();
         const token=data?.session?.access_token;
         if(error||!token)throw Error("Authentication required");
-        const endpoint=cfg.url.replace(/\\/$/,"")+"/functions/v1/meeting-pdf?document_id="+encodeURIComponent(d.id);
+        const endpoint=(cfg.url.endsWith("/")?cfg.url.slice(0,-1):cfg.url)+"/functions/v1/meeting-pdf?document_id="+encodeURIComponent(d.id);
         const resp=await fetch(endpoint,{
           method:"GET",
           headers:{Authorization:"Bearer "+token,apikey:cfg.publishableKey,Accept:"application/pdf"},
