@@ -227,6 +227,37 @@ async function loadAssignableMembers(mode,subjectId){
   if(ticket===assigneeLookupRequest)assigneeLookupLoading=false;
  }
 }
+async function loadExternalRoster(meetingId){
+ const picker=$("f_externalUserId"),help=$("externalRosterHelp");
+ if(!picker||!meetingId||!isEditor(meetingId))return;
+ const ticket=++externalRosterRequest;
+ externalRosterLoading=true;
+ picker.disabled=true;
+ picker.innerHTML='<option value="">กำลังตรวจรายชื่อผู้ใช้งาน…</option>';
+ if(help)help.textContent="กำลังตรวจสอบบัญชีบุคลากรที่เปิดใช้งานแล้ว…";
+ try{
+  const {data,error}=await state.client.rpc("r2_meeting_assignee_options",{p_meeting_id:meetingId});
+  if(error)throw error;
+  if(ticket!==externalRosterRequest||!modal.open||editMode!=="extParticipant"||editCtx.meetingId!==meetingId)return;
+  const existing=new Set(state.participations.filter(p=>p.meeting_id===meetingId).map(p=>p.user_id));
+  const options=(data||[]).filter(u=>typeof u.user_id==="string"&&!existing.has(u.user_id));
+  const before=JSON.stringify(Array.from(new FormData(actionForm).entries()));
+  picker.innerHTML='<option value="">เลือกบุคลากร…</option>'+
+   options.map(u=>'<option value="'+esc(u.user_id)+'">'+esc(u.display_name||"บัญชีที่ยังไม่ระบุชื่อ")+'</option>').join("");
+  picker.disabled=!options.length;
+  if(before===formSnapshot)formSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
+  if(help)help.textContent=options.length?
+   "เพิ่มได้เฉพาะผู้ใช้ที่เปิดบัญชีและได้รับสิทธิ์แล้ว หากมีหลายคนให้เพิ่มทีละคนในรายการประชุมเดียวกัน":
+   "ยังไม่มีบัญชีบุคลากรอื่นที่เพิ่มได้ รายชื่อในทะเบียนที่ยังไม่เชิญจะไม่ถูกนำมาแสดง";
+ }catch(error){
+  if(ticket!==externalRosterRequest||!modal.open||editMode!=="extParticipant")return;
+  picker.innerHTML='<option value="">โหลดรายชื่อไม่สำเร็จ</option>';
+  if(help)help.textContent=friendlyError(error);
+ }finally{
+  if(ticket===externalRosterRequest)externalRosterLoading=false;
+ }
+}
+
 function meetingsOptions(selected="",editorOnly=false){
  return state.meetings.filter(m=>!editorOnly||isEditor(m.id)).map(m=>'<option value="'+esc(m.id)+'" '+(selected===m.id?"selected":"")+'>'+esc(m.title)+'</option>').join("");
 }
@@ -454,6 +485,59 @@ function openModal(mode,ctx={}){
     field("ประเภท","kind",select("kind",typesOptions("teacher")))+
     field("วันที่ประชุม","scheduled_on",input("scheduled_on","date",""))+
     field("สถานที่","location",input("location","text","",false,180));
+ }else if(mode==="externalMeeting"){
+  if(!isStaff())return statusMessage("บัญชีนี้ยังไม่ได้รับสิทธิ์บันทึกการประชุมภายนอก",true);
+  label="บันทึกการไปร่วมประชุมภายนอก";
+  body='<div class="notice-box">สำหรับ ผอ. หรือครูที่ไปร่วมประชุมกับหน่วยงานอื่น ระบบจะสร้างรายการเดียวและลงชื่อคุณเป็นผู้เข้าร่วมเริ่มต้น</div>'+
+   field("เรื่องที่ประชุม *","title",input("title","text","",true,180))+
+   field("ลักษณะการประชุม","kind",select("kind",typesOptions("other")))+
+   field("ประเภทหน่วยงานผู้จัด *","hostType",select("hostType",
+    '<option value="area">เขตพื้นที่การศึกษา</option><option value="network">กลุ่มเครือข่าย</option><option value="school">โรงเรียนอื่น</option><option value="other">หน่วยงานอื่น</option>'))+
+   field("ชื่อหน่วยงานผู้จัด *","hostOrganization",input("hostOrganization","text","",true,200))+
+   field("วันที่ประชุม","scheduled_on",input("scheduled_on","date",""))+
+   field("สถานที่ / ประชุมออนไลน์","location",input("location","text","",false,180))+
+   '<p class="mini">เวลาเริ่ม–เลิกยังไม่รองรับในแบบฟอร์มนี้ กรุณาใส่ในรายงานผลเมื่อทราบจริง ไม่ต้องเดาเวลา</p>';
+ }else if(mode==="extParticipant"&&m&&m.meeting_mode==="externally_hosted"&&isEditor(m.id)){
+  label="เพิ่มผู้เข้าร่วมประชุมภายนอก";
+  body='<p class="muted">'+esc(m.title)+'</p>'+
+   field("เลือกบัญชีบุคลากร *","externalUserId",select("externalUserId",'<option value="">กำลังตรวจบัญชี…</option>'))+
+   '<p id="externalRosterHelp" class="assignee-lookup-help" role="status"></p>'+
+   field("บทบาทที่เข้าร่วม","participationRole",select("participationRole",
+    Object.entries(participationRoleLabels).map(([key,name])=>'<option value="'+esc(key)+'">'+esc(name)+'</option>').join("")))+
+   '<div class="notice-box">การเพิ่มผู้เข้าร่วมไม่ใช่การเชิญสร้างบัญชี และยังไม่ได้ยืนยันว่าเข้าร่วมจริง ผู้เข้าร่วมต้องยืนยันสถานะด้วยตนเอง</div>';
+ }else if(mode==="extReport"&&m&&m.meeting_mode==="externally_hosted"&&externalParticipation(m)&&isStaff()){
+  const own=ownExternalReport(m);
+  if(own&&!["draft","returned"].includes(own.status))return statusMessage("รายงานอยู่ระหว่างตรวจทานหรือถูกตรวจทานแล้ว",true);
+  label=own?"แก้ไขรายงานผลการเข้าร่วม":"เขียนรายงานผลการเข้าร่วม";
+  body='<p class="muted">'+esc(m.title)+' · '+esc(m.host_organization||"")+'</p>'+
+   '<div class="notice-box">บันทึกเฉพาะข้อเท็จจริงที่ตรวจสอบได้ ไม่ใช่รายงานการประชุมฉบับรับรองของเจ้าภาพ และยังไม่สร้างมติหรือมอบหมายงานอัตโนมัติ</div>'+
+   field("สาระสำคัญที่ได้รับทราบ","summary",textarea("summary",own?.summary||"").replace('maxlength="8000"','maxlength="20000"'))+
+   field("ข้อสั่งการ / กำหนดส่งจากเจ้าภาพ","directives",textarea("directives",own?.directives||"").replace('maxlength="8000"','maxlength="10000"'))+
+   field("เรื่องที่เกี่ยวข้องกับโรงเรียน","schoolImpact",textarea("schoolImpact",own?.school_impact||"").replace('maxlength="8000"','maxlength="10000"'))+
+   field("ข้อเสนอให้โรงเรียนดำเนินการ","proposedActions",textarea("proposedActions",own?.proposed_actions||"").replace('maxlength="8000"','maxlength="10000"'))+
+   '<p class="mini">บันทึกเป็นร่างได้ก่อน เมื่อจะส่งตรวจต้องมีสาระสำคัญอย่างน้อยหนึ่งรายการ</p>';
+ }else if(mode==="extWithdraw"&&m&&ownExternalReport(m)?.status==="submitted"){
+  label="ดึงรายงานกลับมาแก้ไข";
+  body='<p class="muted">'+esc(m.title)+'</p>'+
+   '<div class="notice-box">ถ้าผู้ตรวจยังไม่ได้ตรวจทาน สามารถดึงกลับเป็นฉบับร่างได้ เหตุผลจะถูกบันทึกไว้ในประวัติ</div>'+
+   field("เหตุผลที่ดึงกลับ *","reason",textarea("reason","",true).replace('maxlength="8000"','maxlength="2000"'));
+ }else if(mode==="extReview"&&m&&m.meeting_mode==="externally_hosted"&&isEditor(m.id)){
+  const r=state.externalReports.find(x=>x.meeting_id===m.id&&x.author_id===ctx.authorId);
+  if(!r||r.status!=="submitted"||r.author_id===state.user?.id)return statusMessage("รายงานนี้ไม่พร้อมให้ตรวจทาน",true);
+  label=ctx.approve?"ยืนยันตรวจทานรายงาน":"ส่งรายงานกลับไปแก้ไข";
+  body='<p class="muted">'+esc(m.title)+' — '+esc(fullName(r.author_id))+'</p>'+
+   '<div class="notice-box">การตรวจทานรายงานผลการเข้าร่วมไม่ใช่การรับรองรายงานการประชุมของหน่วยงานเจ้าภาพ</div>'+
+   field(ctx.approve?"ความเห็นผู้ตรวจ (ถ้ามี)":"เหตุผลที่ส่งกลับ *","note",
+     textarea("note","",!ctx.approve).replace('maxlength="8000"','maxlength="2000"'));
+ }else if(mode==="extDocument"&&m&&m.meeting_mode==="externally_hosted"&&externalParticipation(m)){
+  const own=ownExternalReport(m);
+  if(own&&["submitted","reviewed"].includes(own.status))return statusMessage("รายงานอยู่ระหว่างตรวจทานแล้ว กรุณารอผลก่อนเพิ่มหลักฐาน",true);
+  label="แนบเอกสารประกอบจาก Google Drive";
+  body='<p class="muted">'+esc(m.title)+'</p>'+
+   '<div class="notice-box">ระบบเก็บเฉพาะการอ้างอิงไฟล์ ไม่เปลี่ยนสิทธิ์ใน Google Drive ผู้ที่มีสิทธิ์ดูการประชุมอาจเห็นชื่อเอกสาร แต่จะเปิดไฟล์ต้นฉบับได้เมื่อเจ้าของ Drive อนุญาต</div>'+
+   field("ชื่อเอกสาร *","title",input("title","text","",true,200))+
+   field("ลิงก์ไฟล์ Google Drive *","driveUrl",input("driveUrl","url","",true,900),
+      "รองรับไฟล์จาก Drive, Docs, Sheets หรือ Slides ที่คุณได้รับอนุญาตให้แชร์");
  }else if(mode==="agenda"&&m){
   label="เพิ่มหัวข้อวาระ";
   body='<p class="muted">'+esc(m.title)+'</p>'+
@@ -575,6 +659,7 @@ function openModal(mode,ctx={}){
  modal.showModal();
  if(mode==="coverPhoto")loadCoverGallery(m.id);
  if(mode==="taskOwner")loadAssignableMembers(mode,t.id);
+ if(mode==="extParticipant")loadExternalRoster(m.id);
  if(mode==="newTask")loadAssignableMembers(mode,$("f_meetingId")?.value);
  fitModalViewport();
  if(window.matchMedia("(min-width: 901px)").matches)modal.querySelector("input,select,textarea")?.focus();
@@ -997,6 +1082,52 @@ async function submitForm(ev){
  try{
  switch(mode){
   case "meeting":method="r2_create_meeting";args={p_title:g("title",180),p_kind:g("kind",20),p_scheduled_on:g("scheduled_on",10)||null,p_location:g("location",180)};msg="สร้างการประชุมแล้ว";break;
+  case "externalMeeting":
+    if(!isStaff()){showFormError("บัญชีนี้ไม่มีสิทธิ์บันทึกการประชุมภายนอก");return;}
+    method="r2_ext_create_meeting";
+    args={p_title:g("title",180),p_kind:g("kind",20),
+      p_host_organization:g("hostOrganization",200),p_host_type:g("hostType",30),
+      p_scheduled_on:g("scheduled_on",10)||null,p_location:g("location",180)};
+    if(!args.p_host_organization){showFormError("กรุณาระบุชื่อหน่วยงานผู้จัด","hostOrganization");return;}
+    msg="สร้างร่างการประชุมภายนอกแล้ว";break;
+  case "extParticipant":
+    if(externalRosterLoading||$("f_externalUserId")?.disabled||!g("externalUserId",36)){
+      showFormError("ยังไม่สามารถเลือกรายชื่อบัญชีที่เปิดใช้งานได้","externalUserId");return;
+    }
+    method="r2_ext_add_participant";
+    args={p_meeting_id:mid,p_user_id:g("externalUserId",36),p_participation_role:g("participationRole",30)};
+    msg="เพิ่มผู้เข้าร่วมในรายการประชุมเดียวกันแล้ว (ยังไม่ยืนยันการเข้าร่วมจริง)";break;
+  case "extReport":{
+    const current=ownExternalReport(meeting(mid));
+    method="r2_ext_save_report";
+    args={p_meeting_id:mid,p_summary:g("summary",20000),p_directives:g("directives",10000),
+      p_school_impact:g("schoolImpact",10000),p_proposed_actions:g("proposedActions",10000),
+      p_expected_version:current?.version||0};
+    msg="บันทึกฉบับร่างรายงานผลการเข้าร่วมแล้ว";break;
+  }
+  case "extWithdraw":{
+    const current=ownExternalReport(meeting(mid));
+    if(!current){showFormError("ไม่พบรายงานของคุณ");return;}
+    method="r2_ext_withdraw_report";
+    args={p_meeting_id:mid,p_reason:g("reason",2000),p_expected_version:current.version};
+    msg="ดึงรายงานกลับเป็นฉบับร่างและบันทึกเหตุผลแล้ว";break;
+  }
+  case "extReview":{
+    const current=state.externalReports.find(r=>r.meeting_id===mid&&r.author_id===editCtx.authorId);
+    if(!current){showFormError("ไม่พบรายงานที่ต้องตรวจ");return;}
+    method="r2_ext_review_report";
+    args={p_meeting_id:mid,p_author_id:current.author_id,p_approve:!!editCtx.approve,
+      p_note:g("note",2000),p_expected_version:current.version};
+    msg=editCtx.approve?"ตรวจทานรายงานผลการเข้าร่วมแล้ว":"ส่งรายงานกลับให้แก้ไขแล้ว";break;
+  }
+  case "extDocument":{
+    const fileId=parseDriveFileId(g("driveUrl",900));
+    if(!fileId){showFormError("โปรดใช้ลิงก์ไฟล์จาก Google Drive ที่ถูกต้อง","driveUrl");return;}
+    method="r2_ext_attach_document";
+    args={p_meeting_id:mid,p_drive_file_id:fileId,p_title:g("title",200)};
+    msg="แนบลิงก์หลักฐานแล้ว โปรดตรวจสิทธิ์เปิดไฟล์ใน Google Drive ด้วย";break;
+  }
+
   case "agenda":method="r2_add_agenda";args={p_meeting_id:mid,p_section:Number(g("section")),p_title:g("title",200),p_notes:g("notes",8000)};break;
   case "decision":method="r2_record_decision";args={p_agenda_id:editCtx.agendaId,p_body:g("body",8000)};msg="บันทึกข้อสรุปไว้เพื่อรอรับรอง";break;
   case "minutes":method="r2_save_minutes";args={p_meeting_id:mid,p_body:g("body",8000),p_expected_version:Number(g("version"))};msg="บันทึกรายงานฉบับร่างแล้ว";break;
@@ -1053,7 +1184,15 @@ async function submitForm(ev){
   default:return;
  }
  if(!method)return;
- await runMutation(method,args,msg);
+ if(mode==="externalMeeting"){
+   const created=await rpc(method,args);
+   await closeModal({force:true});
+   state.page="meetings";state.activeMeeting=created;
+   const refreshed=await reload();
+   statusMessage(refreshed?msg:"บันทึกแล้วแต่ยังเปิดรายการไม่ได้ โปรดลองโหลดข้อมูลใหม่",!refreshed);
+ }else{
+   await runMutation(method,args,msg);
+ }
  }catch(error){
   showFormError(friendlyError(error));
  }finally{
@@ -1191,6 +1330,32 @@ async function actionClick(ev){
     break;
   }
   case "newMeeting":openModal("meeting");break;
+  case "newExternalMeeting":openModal("externalMeeting");break;
+  case "extParticipant":openModal("extParticipant",{meetingId:mid});break;
+  case "extReport":openModal("extReport",{meetingId:mid});break;
+  case "extWithdraw":openModal("extWithdraw",{meetingId:mid});break;
+  case "extDocument":openModal("extDocument",{meetingId:mid});break;
+  case "extApprove":
+  case "extReject":
+    openModal("extReview",{meetingId:mid,authorId:b.dataset.authorId,approve:act==="extApprove"});break;
+  case "extSubmit":{
+    const m=meeting(mid),r=m&&ownExternalReport(m);
+    if(!r||r.status!=="draft"||!String(r.summary||"").trim())return statusMessage("กรุณาบันทึกสาระสำคัญก่อนส่งตรวจ",true);
+    if(await confirmAction("ส่งรายงานผลการเข้าร่วมให้ผู้มีสิทธิ์ตรวจทาน?"))
+      await runMutation("r2_ext_submit_report",{p_meeting_id:mid,p_expected_version:r.version},"ส่งรายงานให้ตรวจทานแล้ว");
+    break;
+  }
+  case "extMarkAttendance":{
+    const m=meeting(mid),own=m&&externalParticipation(m);
+    const target=b.dataset.attendanceStatus;
+    if(!own||own.user_id!==state.user?.id||!["attended","absent"].includes(target))return;
+    if(await confirmAction(target==="attended"?"ยืนยันว่าคุณเข้าร่วมประชุมนี้จริง?":"ยืนยันว่าคุณไม่ได้เข้าร่วมประชุมนี้?"))
+      await runMutation("r2_ext_set_attendance",
+        {p_meeting_id:mid,p_attendance_status:target,p_expected_status:own.attendance_status},
+        "บันทึกสถานะการเข้าร่วมของคุณแล้ว");
+    break;
+  }
+
   case "newAgenda":openModal("agenda",{meetingId:mid});break;
   case "decision":openModal("decision",{agendaId:aid});break;
   case "minutes":openModal("minutes",{meetingId:mid});break;
@@ -1304,6 +1469,7 @@ function main(){
  },true);
  $("workspace").addEventListener("change",ev=>{
   if(ev.target.id==="taskFilter"){state.taskFilter=ev.target.value;render();return;}
+  if(ev.target.id==="meetingFilter"){state.meetingFilter=ev.target.value;render();return;}
   if(ev.target.dataset.evidenceUpload){const file=ev.target.files?.[0];if(file)uploadEvidence(file,ev.target.dataset.evidenceUpload,ev.target);}
  });
  modal.addEventListener("error",event=>{
@@ -1320,6 +1486,7 @@ function main(){
  modal.addEventListener("cancel",event=>{event.preventDefault();closeModal();});
  modal.addEventListener("close",()=>{
    ++assigneeLookupRequest;assigneeLookupLoading=false;
+   ++externalRosterRequest;externalRosterLoading=false;
    ++coverGalleryRequest;coverGalleryLoading=false;
    modal.style.removeProperty("--ux04-sheet-height");
    modal.style.removeProperty("--ux04-sheet-bottom");
