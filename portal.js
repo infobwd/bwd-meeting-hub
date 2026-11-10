@@ -22,6 +22,7 @@ let previewObjectUrl=null,previewFile=null,previewReturnFocus=null,previewReques
 const HISTORY_PAGE_SIZE=20;
 let historyTaskId=null,historyOffset=0,historyTotal=null,historyRequest=0,historyLoading=false,historyReturnFocus=null;
 const historySeen=new Set();
+let coverGalleryRequest=0,coverGalleryLoading=false;
 const meetingStates={
   draft:{label:"ฉบับร่าง",tone:"gold"},
   scheduled:{label:"กำหนดการประชุมแล้ว",tone:""},
@@ -238,6 +239,101 @@ function parseDriveCoverFileId(value){
   return fileId;
  }catch{return null;}
 }
+function parseDriveFolderId(value){
+ try{
+  const u=new URL(String(value||"").trim());
+  if(u.protocol!=="https:"||u.hostname!=="drive.google.com")return null;
+  const m=u.pathname.match(/^\/drive\/folders\/([A-Za-z0-9_-]{10,128})(?:\/|$)/);
+  return m?m[1]:null;
+ }catch{return null;}
+}
+function galleryCard(file){
+ const id=String(file.drive_file_id||"");
+ if(!/^[A-Za-z0-9_-]{10,128}$/.test(id))return "";
+ const name=esc(file.file_name||"ภาพการประชุม");
+ return '<button class="cover-gallery-item" type="button" data-cover-select="'+esc(id)+'" aria-pressed="false">'+
+   '<span class="cover-gallery-photo"><img alt="" loading="lazy" src="https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w440">'+
+   '<span class="cover-gallery-fallback">แตะเพื่อเลือกภาพ</span></span>'+
+   '<span class="cover-gallery-name">'+name+'</span></button>';
+}
+async function loadCoverGallery(meetingId){
+ if(editMode!=="coverPhoto"||editCtx.meetingId!==meetingId)return;
+ const ticket=++coverGalleryRequest;
+ const area=$("coverGalleryItems"),message=$("coverGalleryStatus");
+ if(!area||!message)return;
+ message.textContent="กำลังอ่านรายการภาพ…";
+ area.replaceChildren();
+ try{
+  const {data,error}=await state.client.from("meeting_photo_catalog")
+   .select("drive_file_id,file_name,mime_type").eq("meeting_id",meetingId)
+   .order("file_name",{ascending:false}).limit(100);
+  if(error)throw error;
+  if(ticket!==coverGalleryRequest||!modal.open||editCtx.meetingId!==meetingId)return;
+  const photos=(data||[]).filter(row=>["image/jpeg","image/png","image/webp","image/gif"].includes(row.mime_type));
+  area.innerHTML=photos.map(galleryCard).join("");
+  const current=parseDriveCoverFileId($("f_driveUrl")?.value||"");
+  area.querySelectorAll("[data-cover-select]").forEach(item=>{
+   item.setAttribute("aria-pressed",String(item.dataset.coverSelect===current));
+  });
+  message.textContent=photos.length?("เลือกได้ "+photos.length+" ภาพ · แตะรูปที่ต้องการ"):
+     "ยังไม่มีภาพในคลัง กรุณาเชื่อมโฟลเดอร์ภาพหรือเพิ่มภาพผ่าน Google Drive";
+ }catch(error){
+  if(ticket!==coverGalleryRequest||!modal.open)return;
+  message.textContent="โหลดคลังภาพไม่ได้: "+friendlyError(error);
+ }
+}
+async function refreshCoverGallery(meetingId){
+ if(coverGalleryLoading||editMode!=="coverPhoto")return;
+ const button=$("coverGalleryRefresh"),message=$("coverGalleryStatus");
+ coverGalleryLoading=true;if(button)button.disabled=true;
+ if(message)message.textContent="กำลังตรวจภาพใหม่จาก Google Drive…";
+ try{
+  const {data,error}=await state.client.functions.invoke("meeting-photo-sync",{body:{meeting_id:meetingId}});
+  if(error){
+   const status=error.context?.status;
+   if(status===503){
+    message.textContent="คลังภาพเดิมยังใช้ได้ แต่ยังไม่ได้เชื่อมบัญชี Google สำหรับซิงก์รูปใหม่โดยอัตโนมัติ";
+   }else if(status===424){
+    message.textContent="Google Drive ยังไม่อนุญาตให้ระบบอ่านโฟลเดอร์ กรุณาตรวจสิทธิ์ของบัญชีที่เชื่อม";
+   }else{
+    message.textContent="ตรวจภาพใหม่ไม่ได้: "+friendlyError(error);
+   }
+   return;
+  }
+  await loadCoverGallery(meetingId);
+  if(message)message.textContent="อ่านภาพจาก Google Drive แล้ว "+Number(data?.synced||0)+" ภาพ";
+ }finally{
+  coverGalleryLoading=false;if(button)button.disabled=false;
+ }
+}
+function chooseGalleryCover(fileId){
+ const field=$("f_driveUrl");
+ if(!field||!/^[A-Za-z0-9_-]{10,128}$/.test(fileId))return;
+ const card=$("coverGalleryItems")?.querySelector('[data-cover-select="'+fileId+'"]');
+ if(!card)return;
+ field.value="https://drive.google.com/file/d/"+encodeURIComponent(fileId)+"/view";
+ updateCoverPreview();
+ const confirmed=$("f_coverConfirmed");if(confirmed)confirmed.checked=false;
+ $("coverGalleryItems").querySelectorAll("[data-cover-select]").forEach(item=>
+   item.setAttribute("aria-pressed",String(item===card)));
+ const feedback=$("coverGalleryStatus");
+ if(feedback)feedback.textContent="เลือก "+(card.querySelector(".cover-gallery-name")?.textContent||"ภาพนี้")+" แล้ว กรุณายืนยันว่าได้ตรวจสิทธิ์การเข้าถึงและกดบันทึก";
+}
+async function updatePhotoFolder(){
+ const mid=editCtx.meetingId,m=meeting(mid);
+ if(!mid||!m||!isEditor(mid))return;
+ const raw=$("coverFolderUrl")?.value.trim()||"";
+ const folderId=parseDriveFolderId(raw);
+ const message=$("coverGalleryStatus");
+ if(!folderId){if(message)message.textContent="โปรดใส่ลิงก์โฟลเดอร์ Google Drive เช่น drive.google.com/drive/folders/...";return;}
+ try{
+  const {error}=await state.client.rpc("r2_set_meeting_photo_folder",{p_meeting_id:mid,p_folder_id:folderId});
+  if(error)throw error;
+  m.photo_drive_folder_id=folderId;
+  await loadCoverGallery(mid);
+  if(message)message.textContent="บันทึกโฟลเดอร์แล้ว กด ‘ดึงภาพใหม่จาก Drive’ เพื่อซิงก์";
+ }catch(error){if(message)message.textContent=friendlyError(error);}
+}
 function updateCoverPreview(){
  if(editMode!=="coverPhoto")return;
  const field=$("f_driveUrl"),img=$("coverPreviewImage"),message=$("coverPreviewMessage"),link=$("coverPreviewLink");
@@ -367,7 +463,19 @@ function openModal(mode,ctx={}){
   const existing=m.cover_drive_file_id?"https://drive.google.com/file/d/"+encodeURIComponent(m.cover_drive_file_id)+"/view":"";
   body='<p class="muted">'+esc(displayMeetingTitle(m))+'</p>'+
     '<div class="notice-box">เลือกภาพจาก Google Drive ที่คุณมีสิทธิ์ใช้งาน ผู้ดูการประชุมต้องได้รับสิทธิ์เข้าถึงภาพใน Google Drive ด้วย ไม่ต้องเปลี่ยนเป็นสาธารณะ</div>'+
+    '<section class="cover-gallery-panel" aria-label="เลือกภาพจาก Google Drive">'+
+     '<div class="cover-gallery-head"><h3>ภาพจาก Google Drive</h3>'+
+      '<button class="button small outline" type="button" id="coverGalleryRefresh">ดึงภาพใหม่จาก Drive</button></div>'+
+     '<p class="mini" id="coverGalleryStatus" role="status">กำลังอ่านรายการภาพ…</p>'+
+     '<div class="cover-gallery-grid" id="coverGalleryItems"></div>'+
+     '<details class="cover-folder-options"><summary>เปลี่ยนโฟลเดอร์ภาพการประชุม</summary>'+
+      '<label for="coverFolderUrl">ลิงก์โฟลเดอร์ใน Google Drive</label>'+
+      '<input type="url" id="coverFolderUrl" value="'+esc(m.photo_drive_folder_id?"https://drive.google.com/drive/folders/"+m.photo_drive_folder_id:"")+'" placeholder="https://drive.google.com/drive/folders/...">'+
+      '<button class="button small outline" type="button" id="coverSaveFolder">บันทึกโฟลเดอร์</button>'+
+     '</details></section>'+
+    '<details class="cover-paste-alternative"><summary>หรือวางลิงก์ภาพด้วยตนเอง</summary>'+
     field("ลิงก์ภาพจาก Google Drive","driveUrl",input("driveUrl","url",existing,false,900),"ใช้ลิงก์ไฟล์ภาพจาก Google Drive เท่านั้น หรือเว้นว่างเพื่อนำภาพปกออก")+
+    '</details>'+
     '<div class="cover-preview" aria-label="ตัวอย่างภาพปกจาก Google Drive">'+
       '<img id="coverPreviewImage" alt="ภาพตัวอย่างปกการประชุม" hidden>'+
       '<p id="coverPreviewMessage" role="status">ยังไม่ได้เลือกภาพปก</p>'+
@@ -403,6 +511,7 @@ function openModal(mode,ctx={}){
  $("submitModal").disabled=false;$("submitModal").textContent="บันทึก";
  modalReturnFocus=document.activeElement;
  modal.showModal();
+ if(mode==="coverPhoto")loadCoverGallery(m.id);
  fitModalViewport();
  if(window.matchMedia("(min-width: 901px)").matches)modal.querySelector("input,select,textarea")?.focus();
  else $("modalTitle").focus({preventScroll:true});
@@ -486,7 +595,7 @@ function meetingCard(m){
    '<p class="meeting-counts">'+agendaCount+' วาระย่อย · '+docCount+' เอกสาร · '+taskCount+' ภารกิจ</p>'+
    '<div class="actions">'+button("เปิดรายละเอียด","openMeeting",{"meeting-id":m.id},"primary")+'</div></article>';
 }
-function taskCard(t,full=false){
+function taskCard(t,full=true){
  const links=taskLinks(t.id);
  const origin=[...new Set(links.map(l=>{const m=meeting(l.meeting_id);return m?displayMeetingTitle(m):null;}).filter(Boolean))].join(" • ");
  const mine=isOwner(t),reviewer=canReview(t.id);
@@ -518,6 +627,12 @@ function taskCard(t,full=false){
      ' • '+esc(statuses[u.new_status]||u.new_status)+(u.note?'<p>'+esc(u.note)+'</p>':'')+'</div>').join("")+
    (updates.length>upd.length?'<p class="mini">มีรายการเพิ่มเติม โปรดเปิดดูประวัติทั้งหมด</p>':"")+'</div>':"";
  const countLabel=attachments.length+" ไฟล์ · ดูประวัติ";
+ if(!full)return '<article class="card task-card task-card-overview">'+
+   '<div class="task-card-head"><h3>'+esc(t.title)+'</h3>'+statusLabel(t.status)+'</div>'+
+   '<div class="task-meta"><p><span>ผู้รับผิดชอบ</span><strong>'+esc(t.owner_id?fullName(t.owner_id):"ยังไม่มอบหมาย")+'</strong></p>'+
+   '<p><span>กำหนดส่ง</span><strong>'+esc(formatDate(t.due_on))+'</strong></p></div>'+
+   (primary?'<div class="task-primary">'+primary+'</div>':"")+
+   '<div class="actions">'+button("ดูรายละเอียดและประวัติ","goTasks")+'</div></article>';
  return '<article class="card task-card" data-task-card="'+esc(t.id)+'">'+
    '<div class="task-card-head"><h3>'+esc(t.title)+'</h3>'+statusLabel(t.status)+'</div>'+
    '<div class="task-meta"><p><span>ผู้รับผิดชอบ</span><strong>'+esc(t.owner_id?fullName(t.owner_id):"ยังไม่มอบหมาย")+'</strong></p>'+
@@ -542,7 +657,7 @@ function renderOverview(){
   '<div class="metric"><strong>'+state.meetings.length+'</strong><small>การประชุมที่เข้าถึงได้</small></div>'+
   '<div class="metric"><strong>'+mine.length+'</strong><small>งานที่รับผิดชอบ</small></div>'+
   '<div class="metric"><strong>'+review.length+'</strong><small>งานที่รอตรวจรับ</small></div></div>'+
-  section("งานที่ต้องติดตาม",mine.length?'<div class="cards">'+mine.slice(0,4).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีงานที่มอบหมายให้บัญชีนี้"),
+  section("งานที่ต้องติดตาม",mine.length?'<div class="cards">'+mine.slice(0,4).map(t=>taskCard(t,false)).join("")+'</div>':empty("ยังไม่มีงานที่มอบหมายให้บัญชีนี้"),
     button("ดูภารกิจทั้งหมด","goTasks"))+
   section("การประชุมล่าสุด",state.meetings.length?'<div class="cards">'+state.meetings.slice(0,4).map(meetingCard).join("")+'</div>':empty("ไม่มีการประชุมที่ได้รับสิทธิ์"),
     button("ดูการประชุมทั้งหมด","goMeetings"))+
@@ -1011,9 +1126,20 @@ function main(){
   if(ev.target.id==="taskFilter"){state.taskFilter=ev.target.value;render();return;}
   if(ev.target.dataset.evidenceUpload){const file=ev.target.files?.[0];if(file)uploadEvidence(file,ev.target.dataset.evidenceUpload,ev.target);}
  });
- modal.addEventListener("click",event=>{if(event.target===modal)closeModal();});
+ modal.addEventListener("error",event=>{
+   if(event.target?.matches?.(".cover-gallery-photo img"))event.target.hidden=true;
+ },true);
+ modal.addEventListener("click",event=>{
+   if(event.target===modal){closeModal();return;}
+   if(editMode!=="coverPhoto")return;
+   const select=event.target.closest("[data-cover-select]");
+   if(select){chooseGalleryCover(select.dataset.coverSelect);return;}
+   if(event.target.closest("#coverGalleryRefresh")){refreshCoverGallery(editCtx.meetingId);return;}
+   if(event.target.closest("#coverSaveFolder")){updatePhotoFolder();return;}
+ });
  modal.addEventListener("cancel",event=>{event.preventDefault();closeModal();});
  modal.addEventListener("close",()=>{
+   ++coverGalleryRequest;coverGalleryLoading=false;
    modal.style.removeProperty("--ux04-sheet-height");
    modal.style.removeProperty("--ux04-sheet-bottom");
    formSubmitting=false;discardPromptActive=false;
