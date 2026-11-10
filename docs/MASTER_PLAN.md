@@ -141,3 +141,14 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Applied migration 202611100006_meeting_cover.sql to Supabase Meeting on 2026-11-10 and verified one existing meeting, zero cover images selected, and only authenticated role granted RPC execution. This does not replace live multi-user authorization acceptance.
 - [ ] Choose an actual appropriate image in the permitted Google Drive; none is auto-selected from private school documents.
 - [ ] Live iOS/Android and separate-role acceptance, restricted Drive-photo test, storage quota and privacy approval before official go-live.
+
+## 15. UX-09 — Mobile Timeline & Meeting Cover Refinement (2026-11-10)
+- [x] Fix the actual iPhone history regression: UX-08's 18px first grid column received the content because the decorative dot was absolutely positioned. Use full-width block entries and independently positioned timeline dots on mobile and desktop; keep long notes legible and preserve all existing history.
+- [x] Change the meeting cover's *empty state only* from a tall 16:9 block to a concise row; real images retain 16:9 and Drive fallback.
+- [x] Allow editors to preview a selected Drive file thumbnail before confirming the cover; clear stale previews when the link changes, show a private Drive original link for ACL failures, and require manual confirmation that the original is a photo rather than a PDF/document.
+- [x] Restrict cover entry to `drive.google.com/file/d/...` file links (not Docs, Sheets, Slides or folders), without changing the generic Drive document parser or publishing private images.
+- [x] Close the account dropdown on outside pointer, Escape, page switch or entering/leaving meeting details; keep the native accessible summary and focus behavior.
+- [x] Refresh frontend asset versions and add UX-09 source-level and isolated rendering regression tests.
+- [ ] **Manual acceptance:** verify history text wrapping and cover preview from a real iPhone/Android, with access-restricted Google Drive image and a second authorized account. Google Drive's cross-origin thumbnail is not guaranteed for private media.
+- **Important:** the browser cannot verify a private Drive file's MIME type without Drive OAuth/API access. Requiring the editor to inspect and confirm the original prevents accidental acceptance but is not automated MIME verification.
+- **No Supabase schema, stored meeting cover, task update history, approval states, or Google Drive ACLs changed.**
