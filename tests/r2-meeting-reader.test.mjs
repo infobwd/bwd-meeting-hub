@@ -35,6 +35,6 @@ test("Drive preview is not misrepresented as full PDF.js rendering",()=>{
   assert.match(reader,/pdfjs\.getDocument/);
   assert.match(reader,/p\.render/);
   assert.match(reader,/Math\.abs\(dx\)>=65/);
-  assert.match(html,/เลือกไฟล์ PDF จากเครื่อง/);
+  assert.match(html,/เลือก PDF จากเครื่อง/);
   assert.doesNotMatch(reader,/localStorage|sessionStorage|publicUrl|createSignedUrl/);
 });
