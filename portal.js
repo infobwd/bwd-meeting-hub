@@ -17,7 +17,7 @@ const state={
   page:"overview",activeMeeting:null,taskFilter:"all",loading:false
 };
 const modal=$("modal"), actionForm=$("actionForm");
-let editMode="", editCtx={},authChangeTimer;
+let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus;
 function statusLabel(s){const tone=s==="approved"?"green":s==="blocked"?"red":s==="submitted"?"purple":s==="doing"?"gold":"";return '<span class="status '+tone+'">'+esc(statuses[s]||s)+'</span>';}
 function formatDate(v){if(!v)return "ยังไม่กำหนดวัน";const d=new Date(v+"T12:00:00");return Number.isNaN(d.getTime())?"ยังไม่กำหนดวัน":new Intl.DateTimeFormat("th-TH",{year:"numeric",month:"short",day:"numeric"}).format(d);}
 function fullName(id){const p=state.profiles.find(p=>p.id===id);return p?.display_name|| (id===state.user?.id?"บัญชีของฉัน":"บัญชีผู้ใช้");}
@@ -31,7 +31,26 @@ function canReview(taskId){return isAdmin()||taskLinks(taskId).some(l=>isEditor(
 function isOwner(t){return t.owner_id===state.user?.id;}
 function isStaff(){return ["admin","secretary","member"].includes(state.member?.role);}
 function statusMessage(message,error=false){
-  const node=$("feedback");node.textContent=message;node.classList.toggle("error",error);node.hidden=!message;
+  // Keep the legacy inline status node for source compatibility, but show feedback as a toast.
+  const node=$("feedback");node.textContent=message;node.classList.toggle("error",error);node.hidden=true;
+  const region=$("toastRegion");
+  clearTimeout(toastTimer);
+  region.replaceChildren();
+  if(!message)return;
+  const toast=document.createElement("div");
+  toast.className="toast "+(error?"toast-error":"toast-success");
+  toast.setAttribute("role",error?"alert":"status");
+  const symbol=document.createElement("span");
+  symbol.className="toast-symbol";symbol.setAttribute("aria-hidden","true");symbol.textContent=error?"!":"✓";
+  const content=document.createElement("span");
+  content.className="toast-message";content.textContent=message;
+  const dismiss=document.createElement("button");
+  dismiss.type="button";dismiss.className="toast-close";dismiss.setAttribute("aria-label","ปิดการแจ้งเตือน");
+  dismiss.textContent="×";
+  dismiss.addEventListener("click",()=>{clearTimeout(toastTimer);region.replaceChildren();});
+  toast.append(symbol,content,dismiss);
+  region.append(toast);
+  toastTimer=setTimeout(()=>region.replaceChildren(),error?8000:4500);
 }
 function setVisible(id,visible){$(id).hidden=!visible;}
 function setPage(page){
@@ -73,6 +92,19 @@ function select(key,html){
 function readStr(fd,key,max=200){const v=fd.get(key);return typeof v==="string"?v.trim().slice(0,max):"";}
 function uuid(){return crypto.randomUUID();}
 function closeModal(){if(modal.open)modal.close();}
+async function confirmAction(message){
+  const dialog=$("confirmDialog");
+  $("confirmMessage").textContent=message;
+  const returnFocus=document.activeElement;
+  dialog.returnValue="cancel";
+  dialog.showModal();
+  return new Promise(resolve=>{
+    dialog.addEventListener("close",()=>{
+      if(returnFocus?.isConnected)returnFocus.focus({preventScroll:true});
+      resolve(dialog.returnValue==="confirm");
+    },{once:true});
+  });
+}
 function openModal(mode,ctx={}){
  editMode=mode;editCtx=ctx;
  const m=meeting(ctx.meetingId),a=agenda(ctx.agendaId),t=state.tasks.find(x=>x.id===ctx.taskId);
@@ -150,8 +182,10 @@ function openModal(mode,ctx={}){
  }else{return;}
  $("modalTitle").textContent=label;$("modalFields").innerHTML=body;
  $("submitModal").disabled=false;
+ modalReturnFocus=document.activeElement;
  modal.showModal();
- modal.querySelector("input,select,textarea")?.focus();
+ if(window.matchMedia("(min-width: 901px)").matches)modal.querySelector("input,select,textarea")?.focus();
+ else $("modalTitle").focus({preventScroll:true});
 }
 async function rpc(method,args){
  const {data,error}=await state.client.rpc(method,args);
@@ -395,7 +429,7 @@ async function actionClick(ev){
   case "profile":openModal("profile");break;
   case "printMinutes":printMinutes(mid);break;
   case "downloadEvidence":await downloadEvidence(b.dataset.objectPath);break;
-  case "submitMinutes":if(window.confirm("ส่งรายงานฉบับร่างให้ผู้บริหารตรวจทาน?"))await runMutation("r2_submit_minutes",{p_meeting_id:mid},"ส่งรายงานให้ตรวจทานแล้ว");break;
+  case "submitMinutes":if(await confirmAction("ส่งรายงานฉบับร่างให้ผู้บริหารตรวจทาน?"))await runMutation("r2_submit_minutes",{p_meeting_id:mid},"ส่งรายงานให้ตรวจทานแล้ว");break;
  }
 }
 function main(){
@@ -422,6 +456,8 @@ function main(){
   if(ev.target.id==="taskFilter"){state.taskFilter=ev.target.value;render();return;}
   if(ev.target.dataset.evidenceUpload){const file=ev.target.files?.[0];if(file)uploadEvidence(file,ev.target.dataset.evidenceUpload,ev.target);}
  });
+ modal.addEventListener("click",event=>{if(event.target===modal)closeModal();});
+ modal.addEventListener("close",()=>{if(modalReturnFocus?.isConnected)modalReturnFocus.focus({preventScroll:true});modalReturnFocus=null;});
  $("closeModal").addEventListener("click",closeModal);
  $("cancelModal").addEventListener("click",closeModal);
  actionForm.addEventListener("submit",submitForm);
