@@ -42,7 +42,7 @@ test("UX-08 new cover RPC is explicitly editor-only and audited",()=>{
  assert.doesNotMatch(sql,/grant execute on function .* to anon/);
  assert.match(js,/case "coverPhoto"/);
  assert.match(js,/r2_set_meeting_cover/);
- assert.match(js,/parseDriveFileId\(raw\)/);
+ assert.match(js,/parseDriveCoverFileId\(raw\)/);
 });
 test("UX-08 view-all history is per-task with pagination and escaping",()=>{
  seed();
