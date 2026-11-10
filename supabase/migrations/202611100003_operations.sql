@@ -161,6 +161,7 @@ begin
   if not private.is_admin() then raise exception 'Administrator only'; end if;
   select * into v_row from public.minutes where meeting_id=p_meeting_id for update;
   if not found or v_row.status<>'submitted' then raise exception 'Minutes not submitted'; end if;
+  if v_row.updated_by=auth.uid() and p_approve then raise exception 'Independent reviewer required'; end if;
   if not p_approve and nullif(btrim(p_note),'') is null then raise exception 'Rejection reason required'; end if;
   update public.minutes set
     status=case when p_approve then 'approved' else 'draft' end,
@@ -219,6 +220,9 @@ begin
   if p_agenda_id is not null and not exists(
     select 1 from public.agendas where id=p_agenda_id and meeting_id=p_meeting_id
   ) then raise exception 'Agenda does not belong to meeting'; end if;
+  if exists (select 1 from public.meetings where id=p_meeting_id and status='archived') then
+    raise exception 'Cannot link into archived meeting';
+  end if;
   insert into public.task_meeting_links(task_id,meeting_id,agenda_id,link_kind,linked_by)
   values(p_task_id,p_meeting_id,p_agenda_id,'followup',auth.uid())
   on conflict(task_id,meeting_id) do nothing;
@@ -284,6 +288,7 @@ begin
   select * into v_task from public.tasks where id=p_task_id for update;
   if not found or v_task.version<>p_expected_version then raise exception 'Version conflict; reload'; end if;
   if v_task.status<>'submitted' then raise exception 'Work not submitted for review'; end if;
+  if v_task.owner_id=auth.uid() and p_approve then raise exception 'Self approval not allowed'; end if;
   if not p_approve and nullif(btrim(coalesce(p_note,'')),'') is null then
     raise exception 'Rejection reason required';
   end if;
