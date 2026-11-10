@@ -14,10 +14,10 @@ const sections={"1":"ประธานแจ้งให้ทราบ","2":"�
 const state={
   client:null,user:null,member:null,profile:null,meetings:[],access:[],agendas:[],decisions:[],
   minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],
-  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false
+  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false,loadError:""
 };
 const modal=$("modal"), actionForm=$("actionForm");
-let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus;
+let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus,formSnapshot="",formSubmitting=false;
 let previewObjectUrl=null,previewFile=null,previewReturnFocus=null,previewRequestId=0;
 const meetingStates={
   draft:{label:"ฉบับร่าง",tone:"gold"},
@@ -69,6 +69,26 @@ function isEditor(meetingId){return isAdmin()||state.access.some(a=>a.meeting_id
 function canReview(taskId){return isAdmin()||taskLinks(taskId).some(l=>isEditor(l.meeting_id));}
 function isOwner(t){return t.owner_id===state.user?.id;}
 function isStaff(){return ["admin","secretary","member"].includes(state.member?.role);}
+function friendlyError(error){
+ const raw=String(error?.message||error||"").toLowerCase();
+ if(/version conflict|conflict/.test(raw))return "ข้อมูลมีการเปลี่ยนแปลงระหว่างที่เปิดหน้านี้ กรุณาโหลดข้อมูลใหม่ก่อนทำรายการอีกครั้ง";
+ if(/access denied|permission|not authorized|forbidden|row.level|jwt|401|403/.test(raw))return "บัญชีนี้ไม่มีสิทธิ์ดำเนินการ โปรดตรวจสอบสิทธิ์กับผู้ดูแล";
+ if(/network|fetch|timeout|offline|failed to/.test(raw))return "เชื่อมต่อข้อมูลไม่ได้ โปรดตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง";
+ return "ดำเนินการไม่สำเร็จ โปรดลองอีกครั้ง หากยังพบปัญหาให้แจ้งผู้ดูแล";
+}
+function loadingMarkup(){
+ return '<div class="ux04-loading" role="status" aria-live="polite" aria-label="กำลังโหลดข้อมูล">'+
+   '<p>กำลังโหลดข้อมูลที่คุณมีสิทธิ์เข้าถึง…</p>'+
+   '<div class="ux04-skeleton-grid" aria-hidden="true">'+
+     '<div class="ux04-skeleton ux04-skeleton-wide"></div><div class="ux04-skeleton"></div>'+
+     '<div class="ux04-skeleton"></div><div class="ux04-skeleton ux04-skeleton-wide"></div>'+
+   '</div></div>';
+}
+function loadErrorMarkup(){
+ return '<div class="ux04-load-error" role="alert"><h2>โหลดข้อมูลยังไม่สำเร็จ</h2>'+
+   '<p>'+esc(state.loadError||"โปรดตรวจการเชื่อมต่อแล้วลองอีกครั้ง")+'</p>'+
+   button("ลองโหลดข้อมูลอีกครั้ง","retryLoad",{},"primary")+'</div>';
+}
 function statusMessage(message,error=false){
   // Keep the legacy inline status node for source compatibility, but show feedback as a toast.
   const node=$("feedback");node.textContent=message;node.classList.toggle("error",error);node.hidden=true;
@@ -117,7 +137,33 @@ function meetingsOptions(selected="",editorOnly=false){
  return state.meetings.filter(m=>!editorOnly||isEditor(m.id)).map(m=>'<option value="'+esc(m.id)+'" '+(selected===m.id?"selected":"")+'>'+esc(m.title)+'</option>').join("");
 }
 function field(label,key,content,help=""){
- return '<div class="field"><label for="f_'+key+'">'+esc(label)+'</label>'+content+(help?'<div class="mini">'+esc(help)+'</div>':'')+'</div>';
+ return '<div class="field"><label for="f_'+key+'">'+esc(label)+'</label>'+content+
+  (help?'<div class="mini">'+esc(help)+'</div>':'')+
+  '<p class="field-error" id="error_f_'+esc(key)+'" role="alert" hidden></p></div>';
+}
+function clearFieldErrors(){
+ document.querySelectorAll("#modalFields .field-error").forEach(node=>{node.textContent="";node.hidden=true;});
+ const summary=$("modalMessage");if(summary){summary.textContent="";summary.hidden=true;}
+ document.querySelectorAll("#modalFields [aria-invalid]").forEach(node=>node.removeAttribute("aria-invalid"));
+}
+function showFormError(message,key=""){
+ const summary=$("modalMessage");
+ if(summary){summary.hidden=false;summary.textContent=message;}
+ if(!key)return;
+ const fieldNode=$("f_"+key),errorNode=$("error_f_"+key);
+ if(fieldNode){fieldNode.setAttribute("aria-invalid","true");fieldNode.focus({preventScroll:true});fieldNode.scrollIntoView({block:"nearest",behavior:"instant"});}
+ if(errorNode){errorNode.textContent=message;errorNode.hidden=false;}
+}
+function isFormDirty(){
+ return modal.open && !formSubmitting && JSON.stringify(Array.from(new FormData(actionForm).entries()))!==formSnapshot;
+}
+function fitModalViewport(){
+ if(!modal.open||!window.visualViewport||!window.matchMedia("(max-width: 900px)").matches)return;
+ const view=window.visualViewport;
+ const available=Math.max(220,Math.floor(view.height-12));
+ const bottom=Math.max(0,Math.round(window.innerHeight-view.height-view.offsetTop));
+ modal.style.setProperty("--ux04-sheet-height",available+"px");
+ modal.style.setProperty("--ux04-sheet-bottom",bottom+"px");
 }
 function input(key,type="text",value="",required=false,max=200){
  return '<input id="f_'+key+'" name="'+key+'" type="'+type+'" value="'+esc(value??"")+'" '+(required?"required":"")+' maxlength="'+max+'">';
@@ -148,7 +194,14 @@ function meetingDocumentMarkup(d){
     '<div class="actions">'+button("อ่าน PDF ในเว็บ","readMeetingPdf",{"document-id":d.id},"primary")+
     '<a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิดใน Google Drive</a></div></div>';
 }
-function closeModal(){if(modal.open)modal.close();}
+async function closeModal({force=false}={}){
+ if(!modal.open)return;
+ if(formSubmitting&&!force)return;
+ if(!force&&isFormDirty()){
+   if(!await confirmAction("มีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดโดยไม่บันทึกหรือไม่?"))return;
+ }
+ modal.close();
+}
 async function confirmAction(message){
   const dialog=$("confirmDialog");
   $("confirmMessage").textContent=message;
@@ -245,9 +298,13 @@ function openModal(mode,ctx={}){
   body=field("ชื่อแสดง *","displayName",input("displayName","text",state.profile?.display_name||"",true,160));
  }else{return;}
  $("modalTitle").textContent=label;$("modalFields").innerHTML=body;
- $("submitModal").disabled=false;
+ clearFieldErrors();
+ formSubmitting=false;
+ formSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
+ $("submitModal").disabled=false;$("submitModal").textContent="บันทึก";
  modalReturnFocus=document.activeElement;
  modal.showModal();
+ fitModalViewport();
  if(window.matchMedia("(min-width: 901px)").matches)modal.querySelector("input,select,textarea")?.focus();
  else $("modalTitle").focus({preventScroll:true});
 }
