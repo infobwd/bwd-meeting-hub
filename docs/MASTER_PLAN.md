@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.6 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.7 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -218,3 +218,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] **Backend deployment + initial CI verified:** migration `20261110160217 ext02_external_attendance_ui_actions_20261110` applied to Supabase Meeting; read-only catalog confirms `anon` cannot EXECUTE the two new RPCs, authenticated users require server-side checks, and data counts remain 1 meeting / 13 agendas / 1 minutes / 1 task with 0 external reports. GitHub Actions run 249 passed for the code branch; final PR merge status tracked in [EXT-02 acceptance](R2_EXT02_MOBILE_REPORTS_ACCEPTANCE_20261110.md).
 - [ ] **Live acceptance not complete:** real independent-account RLS, iPhone/Android use, restricted original Drive-file access, privacy, backup/restore and school official acceptance remain required. The Supabase definer lint count rose to 31 (two new guarded endpoints); manual role execution tests remain mandatory.
 - [ ] **Next slices:** DOC-02 official document drafts/previews and EXT-03 verified external-to-internal agenda/task continuity. Co-hosted creation, formal PDF/Google Docs ratification/export and notifications remain separate.
+
+## 23. EXT-02 release verification (2026-11-10)
+- [x] [PR #32](https://github.com/infobwd/bwd-meeting-hub/pull/32) merged: `b81eba8b698fabcf222720ccb4c28750ce60d3cd`.
+- [x] Source + regression GitHub Actions `main` run **255** successful. GitHub Pages `pages build and deployment` run **26** successful for the same commit. Verified `portal.js`, `portal.css`, `workspace.html`, migration 011, tests and docs available on `main`.
+- [x] Backend RPCs in Supabase Meeting already deployed (`20261110160217 ext02_external_attendance_ui_actions_20261110`); anon EXECUTE denied, authenticated scoped server checks enforced in function source. Existing meeting/agendas/minutes/task counts remained unchanged.
+- [ ] **Not yet production accepted:** actual independent signed-in staff/editor/guest negative RLS tests, Google Drive access with multiple accounts, real iPhone/Android tablet UAT, backup/restore and school privacy sign-off. Do not mistake green CI/Pages for these release gates. Security advisor still lists 31 authenticated definer functions for manual review.
+- [ ] **Next:** DOC-02 A4 draft official-document preview and EXT-03 verified external knowledge → internal agenda/tasks linkage, keeping committee ratification, co-hosted creation and real notifications in separate gated slices.

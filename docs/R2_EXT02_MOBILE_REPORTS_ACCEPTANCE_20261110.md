@@ -58,3 +58,12 @@ Status: Implementation in code; CI and production release gates are tracked sepa
 - **Supabase security advisor:** callable authenticated definer warning count **31** (29 prior + 2 deliberate new RPCs); private staff-directory RLS/no-policy INFO and Auth leaked-password-protection WARN unchanged. Review references: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 - **Still pending:** independent real-account RLS/RPC acceptance, authorized Drive file test, iPhone/Android screen testing, backup/restore and school privacy/signature/export approval. Not official production sign-off.
 
+
+## Merge and Pages release verification (2026-11-10)
+- PR [#32](https://github.com/infobwd/bwd-meeting-hub/pull/32) **squash-merged successfully** into `main` at commit `b81eba8b698fabcf222720ccb4c28750ce60d3cd`.
+- Final branch checks passed at run 254; `main` workflow **BWD smoke and security checks run 255** completed successfully for the merge commit. 
+- **GitHub Pages build and deployment run 26** completed successfully for the same merge commit. This verifies the automated publication process, **not** physical iPhone/Android rendering or a logged-in multi-user end-to-end session.
+- Verified `main` contains updated `portal.js` (`renderExternalMeeting` and EXT-01 RPC wiring), `portal.css`, `workspace.html` asset version `ext02`, migration 011, mock-only EXT-02 test and this documentation.
+- The Supabase RPC migration was already applied before UI merge; `main` frontend therefore does not depend on an unapplied new migration.
+- External report UI/reader requires authorized signed-in accounts and private Drive ACL; no actual host report has been ratified or published by this release.
+- **Release decision:** EXT-02 code integrated and deployment workflow green; live school production acceptance **pending** multi-role RLS, device testing, private Drive permissions, backups and privacy sign-off.
