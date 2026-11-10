@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.1 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.2 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -177,3 +177,12 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [ ] iPhone and Android manual UAT with different owner/editor credentials, since no teacher has been invited and cross-account QA is not available yet. Backend UX-11 RPC migration deployed, version/anonymous-access gates verified without changing any task status.
 - [x] The school administrator account now has its full display name set in the private Supabase profile (only if previously blank); the picker falls back to email when a future user has not configured a name.
 - **Safety:** no user invitations, Auth account creation, task status mutations or historical-row deletions are part of this release.
+
+## 18. Planning — Official Documents & External Meeting Participation (2026-11-10)
+- **Planning only; not implemented or approved as a final school template.** See [official agenda/minutes standard](R2_OFFICIAL_AGENDA_MINUTES_STANDARD_PLAN_20261110.md) and [external meeting/knowledge transfer plan](R2_EXTERNAL_MEETINGS_AND_KNOWLEDGE_TRANSFER_PLAN_20261110.md).
+- Expand supported meeting modes: **school-hosted**, **externally-hosted** (ผอ./ครูไปร่วมประชุมที่เขต/กลุ่มเครือข่าย/โรงเรียนอื่น), and **co-hosted**. An external attendance report is *not* the host's ratified meeting minutes; external directives must never silently become internal meeting resolutions.
+- Proposed **six-section** agenda is a **configurable default for new school meetings**, not a legal mandate. Preserve the current UX-02 five-section view, the existing 13 school-board agenda items, all historical minutes, tasks, approval states and RLS unchanged. No auto-remapping.
+- Produce compliant formal agenda/minutes draft following the document-standard plan; retain human validation and distinct **administrator review vs committee ratification**. Export to PDF / Google Docs only after permission and formatting acceptance.
+- Future external workflow: invitation → attendance by one/many active staff → private evidence-backed report → human review → optionally forward to internal information/consideration agenda or link to an existing task → follow-up with provenance and no duplicate tasks. A meeting invitation does not equal travel approval.
+- **Recommended next implementation slice: EXT-00 + DOC-00 (audit/design only).** Verify current DB schema, RLS/RPC, all live user roles, document/Drive access, existing five agenda groups, and school official document/ratification requirements; publish a non-breaking data contract, mobile wireframes, test/rollback criteria. Only then implement EXT-01/DOC-01 behind reviewed migrations.
+- Release gates unchanged: multi-account authorization, mobile acceptance, backup/restore, Supabase Free capacity/retention, no automatic account invitations or real notifications. **This documentation commit does not mutate Supabase/Drive or any live meeting/decision/task record.**
