@@ -675,3 +675,48 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
  .assignee-lookup-help{font-size:12px}
  #f_ownerId{font-size:16px}
 }
+
+
+/* EXT-02: external attendance reports — mobile-first, original 3-tab shell retained. */
+.ext-filter-label{display:block;margin:10px 0 5px;color:#345977;font-size:13px;font-weight:500}
+.ext-meeting-filter{display:block;width:100%;max-width:280px;min-height:46px;box-sizing:border-box;
+ padding:8px 12px;margin-bottom:16px;border-radius:10px;border:1px solid #bfd1e4;
+ background:#fff;color:#173a60;font-size:16px}
+.ext-meeting-filter:focus-visible{outline:3px solid #eec34c;outline-offset:2px}
+.ext-meeting-card .meeting-card-head{gap:10px;flex-wrap:wrap}
+.ext-meeting-card .ext-host{overflow-wrap:anywhere;font-size:14px;color:#305779;margin:7px 0}
+.ext-meeting-detail{min-width:0}
+.ext-meeting-detail .panel{overflow-wrap:anywhere}
+.ext-meeting-detail .panel .flex-between{align-items:flex-start;gap:12px;flex-wrap:wrap}
+.ext-person{padding:11px 0;border-bottom:1px solid #e2ebf4;display:flex;gap:6px;
+ flex-direction:column;overflow-wrap:anywhere}
+.ext-person:last-child{border-bottom:0}
+.ext-person strong{font-size:15px;color:#143d66;line-height:1.5}
+.ext-person .mini{line-height:1.6}
+.ext-report-card{border:1px solid #dae6f2;border-radius:14px;background:#fff;
+ padding:14px;margin:12px 0;min-width:0;overflow-wrap:anywhere}
+.ext-report-head{display:flex;gap:10px;justify-content:space-between;align-items:start;flex-wrap:wrap}
+.ext-report-head h3{font-size:16px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.ext-report-section{margin-top:13px;min-width:0}
+.ext-report-section h4{font-size:14px;margin:0 0 5px;color:#214e76}
+.ext-report-section .note{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;
+ font-size:14px;line-height:1.7}
+.ext-report-section .muted{margin:0;font-size:13px;line-height:1.5}
+.ext-review-note{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 11px;
+ border-left:3px solid #c89b41;background:#fff9ed;border-radius:6px;
+ margin:13px 0 0;font-size:13px;line-height:1.65}
+.ext-report-card .actions,.ext-meeting-detail .actions{display:flex;flex-wrap:wrap;gap:9px}
+.ext-report-card .button,.ext-meeting-detail .button{min-height:44px;white-space:normal}
+@media(max-width:900px){
+ .ext-meeting-filter{max-width:100%}
+ .meeting-list-head{align-items:flex-start}
+ .meeting-list-head>.actions{width:100%;display:flex;flex-wrap:wrap;gap:8px}
+ .meeting-list-head>.actions .button{flex:1 1 145px;min-height:46px;line-height:1.45}
+ .ext-report-card{padding:12px}
+ .ext-report-head h3{font-size:15px}
+ .ext-meeting-detail .actions .button{min-height:46px}
+}
+@media(max-width:360px){
+ .ext-report-card .actions .button{width:100%}
+ .ext-report-head{align-items:flex-start}
+}
