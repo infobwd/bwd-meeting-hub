@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.12 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.13 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -258,3 +258,11 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [ ] **Rebased branch CI / PR / Pages** must be verified against the latest source-correction code. The original isolated branch passed CI run 313, but this status alone does not validate integration. Real iPhone Safari / Android Chrome and long, multi-page Thai-language content remain separate acceptance gates. No schema migrations, data writes, user invitations or Drive ACL changes in this slice. Legacy EXT-02 remains available.
 - **Next:** inspect UI on phone and verify the 5.2 label, report editor save, and multi-page preview with real authorized test account (without changing board meeting data); then schedule DOC-03 design/approval separately.
 - **Integration with corrected agenda source:** PR #36/#37/#40 have already established 14 stored / 13 active / 1 retired agenda topics and an earlier DOC-02 draft revision 1. This UI slice preserves the retired row and existing `sameSource`/`alignDraftToSource` source-change confirmation. No new draft or meeting data is created by the UI changes.
+
+
+## 28. DOC-02 review-draft population for the existing school-board meeting (2026-11-10)
+- [x] **Authorized private content import completed:** 13 active topics across the existing five groups were incorporated into two **independent DOC-02 draft streams** for the same meeting, without updating agenda titles/notes, the meeting, legacy minutes, tasks, decisions, ratifications or other historical records.
+- [x] **Current document revisions:** agenda **revision 2 / draft** (previous DOC-02 agenda revision 1 retained immutable); structured minutes **revision 1 / draft** with substance on all 13 active topics and exactly one unratified draft resolution. Both documents remain editable drafts, not submitted, administratively reviewed or committee-certified.
+- [x] **Integrity / provenance:** a guarded, one-transaction administrative import was explicitly authorized in chat, and both payloads passed `private.doc02_valid_fields` for all 13 active topics. Two administrative-only audit events record the assisted import as distinct from a browser action; existing active administrator is the required technical `recorded_by` owner, not evidence of manual UI data entry. No actual report contents or private names are in this public Repository.
+- [x] **Post-import read-only verified:** 13 active and 1 retained retired source topic, one legacy minutes row version 4 / `submitted`, meeting status `minutes_review`, one old DOC-02 agenda revision, zero decisions and ratifications and unchanged single task/link. Both latest DOC-02 drafts have 13 topics and sections 1–5.
+- [ ] **Human gates:** actual attendance/absence, chair/secretary appointment order, minute-taker, meeting time and venue, evidence verification and official ratification still need responsible human sign-off. Distinct-account security checks, actual mobile A4 preview acceptance, protected backup/restore and DOC-03 official export remain pending. Never equate DOC-02 reviewed state with a committee-ratified report.
