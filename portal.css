@@ -500,3 +500,41 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
 }
 @media(prefers-reduced-motion:reduce){.meeting-reader *{scroll-behavior:auto!important}}
 @media print{.meeting-reader .reader-mode{display:none!important}}
+
+/* UX-07 — mobile readability, task details and reader controls. */
+.account-menu{position:relative}
+.account-menu summary{min-height:44px;min-width:72px;list-style:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border:1px solid #8eaacb;border-radius:12px;color:#fff;font-size:13px;font-weight:500;cursor:pointer}
+.account-menu summary::-webkit-details-marker{display:none}
+.account-menu summary:focus-visible{outline:3px solid #efc64a;outline-offset:2px}
+.account-menu-panel{position:absolute;top:calc(100% + 8px);right:0;z-index:55;display:grid;gap:10px;width:min(290px,calc(100vw - 24px));padding:16px;border:1px solid #d7e4f1;border-radius:15px;background:#fff;color:#1c3555;box-shadow:0 14px 32px #051d3970}
+.account-menu-panel #accountName{display:block;max-width:100%;overflow-wrap:anywhere;white-space:normal;font-size:13px}
+.account-menu-label{font-size:12px;color:#5b7188}
+.account-menu-panel #logout{width:100%;background:#edf3fa;color:#193e68;font-size:14px}
+.task-status-help{background:#f1f6fb;border-left:3px solid #efc64a;border-radius:6px;color:#315575;padding:10px 12px;font-size:13px;line-height:1.6;margin:8px 0 14px}
+.task-subdetails{border:1px solid #d9e5f1;border-radius:11px;overflow:hidden}
+.task-subdetails>summary{display:flex;align-items:center;min-height:44px;padding:10px 12px;background:#f6f9fd;color:#274b72;cursor:pointer;font-weight:500;font-size:13px}
+.task-subdetails>summary:focus-visible{outline:3px solid #efc64a;outline-offset:-3px}
+.task-subdetails-body{display:grid;gap:12px;padding:13px;min-width:0}
+.task-details .task-origin{font-size:12px;color:#526e89;margin:0}
+.meeting-reader .reader-quick-modes{display:flex;flex:none;gap:7px;align-items:center;justify-content:center;padding:8px 12px;background:#fff;border-bottom:1px solid #d3e0eb}
+.meeting-reader .reader-quick-modes[hidden]{display:none!important}
+.meeting-reader .reader-quick-modes button{flex:1;min-width:0;min-height:44px;padding:7px 9px;border:1px solid #bdd0e3;border-radius:10px;background:#fff;color:#214c78;font-size:13px;font-weight:500}
+.meeting-reader .reader-quick-modes button[aria-pressed="true"]{background:#164978;color:#fff;border-color:#164978}
+.meeting-reader .reader-quick-modes button:disabled{opacity:.48}
+.meeting-reader .reader-quick-modes button:nth-child(n+3){flex:0 0 44px;font-size:20px}
+@media(max-width:900px){
+ .top .account{flex:0 0 auto}
+ .top .mark strong{font-size:clamp(13px,3.6vw,16px)}
+ .row-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .row-grid .metric{padding:12px 9px;min-height:98px}
+ .row-grid .metric strong{font-size:clamp(24px,6vw,30px)}
+ .row-grid .metric small{font-size:11px;line-height:1.4;display:block}
+ .toast-region{top:auto;bottom:calc(91px + env(safe-area-inset-bottom));left:12px;right:12px;width:auto;max-width:440px;margin:0 auto}
+ .toast{font-size:13px;padding:9px 11px;gap:8px;box-shadow:0 8px 24px #0b264537}
+ .toast-symbol{height:22px;width:22px}
+ .toast-close{min-height:40px;min-width:40px}
+ .meeting-reader .reader-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;font-size:13px}
+ .meeting-reader .reader-header{gap:7px}
+}
+@media(max-width:360px){.row-grid .metric{padding:10px 7px}.row-grid .metric small{font-size:10px}.meeting-reader .reader-quick-modes{gap:4px;padding:6px}.meeting-reader .reader-quick-modes button{font-size:12px}}
+@media print{.account-menu,.meeting-reader .reader-quick-modes{display:none!important}}

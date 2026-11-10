@@ -7,17 +7,20 @@
   <title>BWD Meeting Hub — พื้นที่ทำงานร่วมกัน (R2)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./portal.css?v=ux05">
+  <link rel="stylesheet" href="./portal.css?v=ux07">
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./portal.js?v=ux04-forms1" defer></script>
-  <script src="./meeting-pdf-reader.js?v=ux05" defer></script>
+  <script src="./portal.js?v=ux07" defer></script>
+  <script src="./meeting-pdf-reader.js?v=ux07" defer></script>
 </head>
 <body>
   <a class="skip" href="#screen">ข้ามไปยังเนื้อหา</a>
   <header class="top">
     <a class="mark" href="./workspace.html" aria-label="BWD Meeting Hub หน้าหลัก"><span class="logo">B</span><span><strong>BWD Meeting Hub</strong><small>พื้นที่จัดการประชุมและติดตามงาน</small></span></a>
-    <div class="account"><span id="accountName"></span><button type="button" id="logout" class="button subtle" hidden>ออกจากระบบ</button></div>
+    <div class="account"><details id="accountMenu" class="account-menu" hidden>
+      <summary aria-label="เปิดเมนูบัญชีผู้ใช้">บัญชี <span aria-hidden="true">⌄</span></summary>
+      <div class="account-menu-panel"><span class="account-menu-label">เข้าสู่ระบบเป็น</span><span id="accountName"></span><button type="button" id="logout" class="button subtle" hidden>ออกจากระบบ</button></div>
+    </details></div>
   </header>
   <main id="screen">
     <div id="setup" class="center-card" hidden>
@@ -107,6 +110,12 @@
       <p id="readerNotice" class="reader-draft">ฉบับร่าง — ยังไม่รับรอง</p>
       <p id="readerMode" class="reader-mode" aria-live="polite">กำลังเตรียมตัวอ่านเอกสาร</p>
       <p id="readerStatus" class="reader-status" role="status" aria-live="polite"></p>
+      <div id="readerQuickModes" class="reader-quick-modes" role="group" aria-label="ปรับการแสดง PDF" hidden>
+        <button id="readerQuickWidth" type="button" aria-pressed="true" disabled>พอดีกว้าง</button>
+        <button id="readerQuickPage" type="button" aria-pressed="false" disabled>ทั้งหน้า</button>
+        <button id="readerQuickOut" type="button" aria-label="ย่อ PDF" disabled>−</button>
+        <button id="readerQuickIn" type="button" aria-label="ขยาย PDF" disabled>+</button>
+      </div>
       <div class="reader-content">
         <div id="readerDrivePane" class="reader-drive-pane">
           <iframe id="readerDriveFrame" title="อ่าน PDF จาก Google Drive" src="about:blank" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
