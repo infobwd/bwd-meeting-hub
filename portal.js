@@ -147,6 +147,7 @@ function statusMessage(message,error=false){
 }
 function setVisible(id,visible){$(id).hidden=!visible;}
 function clearPrivateView(){
+ window.BWDDoc02?.closePrivate?.();
  for(const key of ["meetings","access","agendas","decisions","minutes","tasks","links","updates","evidence","profiles","documents","participations","externalReports"])
   state[key]=[];
  state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};
