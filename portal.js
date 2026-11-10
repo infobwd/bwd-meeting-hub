@@ -73,6 +73,18 @@ function updateTaskStatusHelp(status){
  const node=$("taskStatusHelp");
  if(node)node.textContent=statusHelp(status);
 }
+function meetingCoverMarkup(m){
+ const fileId=String(m?.cover_drive_file_id||"");
+ if(!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)){
+  return '<div class="meeting-cover meeting-cover-empty"><span aria-hidden="true">▧</span><span>ยังไม่มีภาพปกการประชุม</span></div>';
+ }
+ const link="https://drive.google.com/file/d/"+encodeURIComponent(fileId)+"/view";
+ const thumbnail="https://drive.google.com/thumbnail?id="+encodeURIComponent(fileId)+"&sz=w1200";
+ return '<div class="meeting-cover" data-cover-for="'+esc(m.id)+'">'+
+   '<div class="meeting-cover-placeholder">ภาพปกอาจต้องได้รับสิทธิ์ใน Google Drive</div>'+
+   '<img src="'+esc(thumbnail)+'" alt="ภาพประกอบการประชุม" loading="lazy" referrerpolicy="no-referrer">'+
+   '<a class="meeting-cover-drive" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">เปิดภาพใน Drive</a></div>';
+}
 function meeting(id){return state.meetings.find(m=>m.id===id);}
 function agenda(id){return state.agendas.find(a=>a.id===id);}
 function minute(meetingId){return state.minutes.find(m=>m.meeting_id===meetingId);}
@@ -302,6 +314,13 @@ function openModal(mode,ctx={}){
   body='<p class="muted">'+esc(t.title)+'</p>'+
     field("เลือกการประชุม","meetingId",select("meetingId",targets.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")))+
     '<div class="notice-box">เมื่อเชื่อมแล้ว ผู้เข้าร่วมการประชุมใหม่ที่มีสิทธิ์อ่านงานจะเห็นรายละเอียด ความก้าวหน้า และหลักฐานของงานนี้ด้วย โปรดตรวจความเหมาะสมก่อนดำเนินการ</div>';
+ }else if(mode==="coverPhoto"&&m){
+  if(!isEditor(m.id))return statusMessage("บัญชีนี้ไม่มีสิทธิ์เปลี่ยนภาพปก",true);
+  label="ภาพปกการประชุม";
+  const existing=m.cover_drive_file_id?"https://drive.google.com/file/d/"+encodeURIComponent(m.cover_drive_file_id)+"/view":"";
+  body='<p class="muted">'+esc(displayMeetingTitle(m))+'</p>'+
+    '<div class="notice-box">เลือกภาพจาก Google Drive ที่คุณมีสิทธิ์ใช้งาน ผู้ดูการประชุมต้องได้รับสิทธิ์เข้าถึงภาพใน Google Drive ด้วย ไม่ต้องเปลี่ยนเป็นสาธารณะ</div>'+
+    field("ลิงก์ภาพจาก Google Drive","driveUrl",input("driveUrl","url",existing,false,900),"ลบลิงก์ในช่องนี้แล้วกดบันทึก หากต้องการเอาภาพปกออก");
  }else if(mode==="taskNote"&&t){
   label="บันทึกความคืบหน้า";
   body='<p class="muted">'+esc(t.title)+'</p>'+field("บันทึก *","note",textarea("note","",true));
@@ -406,6 +425,7 @@ function meetingCard(m){
  const docCount=state.documents.filter(d=>d.meeting_id===m.id).length;
  return '<article class="card meeting-card">'+
    '<div class="meeting-card-head"><span class="meeting-type">'+esc(names[m.kind]||"การประชุม")+'</span>'+meetingStatusLabel(m.status)+'</div>'+
+   meetingCoverMarkup(m)+
    '<h3>'+esc(displayMeetingTitle(m))+'</h3>'+
    '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+(m.location?' · '+esc(m.location):'')+'</p>'+
    '<p class="meeting-counts">'+agendaCount+' วาระย่อย · '+docCount+' เอกสาร · '+taskCount+' ภารกิจ</p>'+
@@ -511,6 +531,8 @@ function renderMeeting(m){
    '<h2>'+esc(displayMeetingTitle(m))+'</h2>'+
    '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+' · '+esc(m.location||"ยังไม่กำหนดสถานที่")+'</p></div>'+
    '<div class="meeting-badges">'+meetingStatusLabel(m.status)+'<span class="role-pill">'+(editable?"แก้ไขได้":"อ่านอย่างเดียว")+'</span></div></header>'+
+   '<div class="meeting-cover-detail">'+meetingCoverMarkup(m)+
+   (editable?'<div class="meeting-cover-tools">'+button(m.cover_drive_file_id?"เปลี่ยนภาพปก":"เลือกภาพปกจาก Google Drive","coverPhoto",{"meeting-id":m.id})+'</div>':"")+'</div>'+
    jump+
    '<div id="bwd-agenda" class="meeting-target">'+
    section("ระเบียบวาระ",agendaControls+agendas,
@@ -591,6 +613,13 @@ async function submitForm(ev){
   case "taskReview":method="r2_review_task";args={p_task_id:tid,p_approve:editCtx.approve,p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskOwner":method="r2_set_task_owner";args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version};break;
   case "taskNote":method="r2_add_task_note";args={p_task_id:tid,p_note:g("note",4000)};break;
+  case "coverPhoto":{
+    const raw=g("driveUrl",900),fileId=raw?parseDriveFileId(raw):null;
+    if(raw&&!fileId){showFormError("โปรดใส่ลิงก์ไฟล์ภาพ Google Drive ที่ถูกต้อง","driveUrl");return;}
+    method="r2_set_meeting_cover";args={p_meeting_id:mid,p_drive_file_id:fileId};
+    msg=fileId?"บันทึกภาพปกการประชุมแล้ว":"นำภาพปกออกแล้ว";
+    break;
+  }
   case "linkTask":method="r2_link_task";args={p_task_id:tid,p_meeting_id:g("meetingId",36),p_agenda_id:null};msg="เชื่อมงานเดิมกับการประชุมใหม่แล้ว";break;
   case "access":method="r2_add_access";args={p_meeting_id:mid,p_user_id:g("userId",36),p_role:g("role",20)};break;
   case "driveDoc":{
@@ -747,6 +776,7 @@ async function actionClick(ev){
   case "decision":openModal("decision",{agendaId:aid});break;
   case "minutes":openModal("minutes",{meetingId:mid});break;
   case "newTask":openModal("newTask",{meetingId:mid,agendaId:aid});break;
+  case "coverPhoto":openModal("coverPhoto",{meetingId:mid});break;
   case "taskState":openModal("taskState",{taskId:tid});break;
   case "taskApprove":openModal("taskReview",{taskId:tid,approve:true});break;
   case "taskReject":openModal("taskReview",{taskId:tid,approve:false});break;
@@ -820,6 +850,10 @@ function main(){
   if(entry)downloadBlob(previewFile.blob,entry.original_name||"evidence");
  });
  $("workspace").addEventListener("click",actionClick);
+ $("workspace").addEventListener("error",event=>{
+   const image=event.target;
+   if(image?.matches?.(".meeting-cover img"))image.hidden=true;
+ },true);
  $("workspace").addEventListener("toggle",ev=>{
    const detail=ev.target;
    if(detail?.matches?.("details[data-task-details]")){
