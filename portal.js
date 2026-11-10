@@ -23,6 +23,7 @@ const HISTORY_PAGE_SIZE=20;
 let historyTaskId=null,historyOffset=0,historyTotal=null,historyRequest=0,historyLoading=false,historyReturnFocus=null;
 const historySeen=new Set();
 let coverGalleryRequest=0,coverGalleryLoading=false;
+let assigneeLookupRequest=0,assigneeLookupLoading=false;
 const meetingStates={
   draft:{label:"ฉบับร่าง",tone:"gold"},
   scheduled:{label:"กำหนดการประชุมแล้ว",tone:""},
@@ -173,9 +174,55 @@ function typesOptions(chosen="teacher"){
  return Object.entries(names).map(([key,label])=>'<option value="'+key+'" '+(key===chosen?"selected":"")+'>'+esc(label)+'</option>').join("");
 }
 function usersOptions(selected="",includeBlank=true){
- const entries=state.profiles.filter(p=>p.id===state.user.id || isStaff()).slice().sort((a,b)=>a.display_name.localeCompare(b.display_name,"th"));
+ const entries=state.profiles.filter(p=>p.id===state.user.id||isStaff()).slice().sort((a,b)=>String(a.display_name||"").localeCompare(String(b.display_name||""),"th"));
  return (includeBlank?'<option value="">ยังไม่มอบหมาย</option>':'')+
- entries.map(p=>'<option value="'+esc(p.id)+'" '+(selected===p.id?"selected":"")+'>'+esc(p.display_name||p.id)+'</option>').join("");
+ entries.map(p=>'<option value="'+esc(p.id)+'" '+(selected===p.id?"selected":"")+'>'+
+ esc(p.display_name?.trim()||(p.id===state.user.id?(state.user?.email||"บัญชีของฉัน"):"บัญชีผู้ใช้ยังไม่ระบุชื่อ"))+'</option>').join("");
+}
+function assigneeOptionMarkup(members,selected=""){
+ return '<option value="">ยังไม่มอบหมาย</option>'+
+ members.map(member=>{
+   const label=String(member.display_name||"").trim()||"บัญชีที่ยังไม่ระบุชื่อ";
+   const own=member.user_id===state.user?.id;
+   const role=member.member_role==="admin"?"ผู้บริหาร":member.member_role==="secretary"?"เลขานุการ":"คุณครู";
+   const visible=label+(own?" (บัญชีของฉัน)":"")+" · "+role;
+   return '<option value="'+esc(member.user_id)+'" '+(selected===member.user_id?"selected":"")+'>'+esc(visible)+'</option>';
+ }).join("");
+}
+async function loadAssignableMembers(mode,subjectId){
+ const select=$("f_ownerId"),help=$("assigneeLookupHelp");
+ if(!select||!subjectId)return;
+ const ticket=++assigneeLookupRequest;
+ assigneeLookupLoading=true;
+ select.disabled=true;
+ select.innerHTML='<option value="">กำลังตรวจรายชื่อบัญชีที่เปิดใช้งาน…</option>';
+ if(help)help.textContent="กำลังอ่านรายชื่อที่มีสิทธิ์รับมอบหมาย…";
+ const method=mode==="taskOwner"?"r2_task_assignee_options":"r2_meeting_assignee_options";
+ const args=mode==="taskOwner"?{p_task_id:subjectId}:{p_meeting_id:subjectId};
+ try{
+  const {data,error}=await state.client.rpc(method,args);
+  if(error)throw error;
+  if(ticket!==assigneeLookupRequest||!modal.open||editMode!==mode)return;
+  if(mode==="taskOwner"&&editCtx.taskId!==subjectId)return;
+  if(mode==="newTask"&&$("f_meetingId")?.value!==subjectId)return;
+  const entries=(data||[]).filter(u=>typeof u.user_id==="string");
+  const selected=mode==="taskOwner"?state.tasks.find(t=>t.id===subjectId)?.owner_id||"":"";
+  select.innerHTML=assigneeOptionMarkup(entries,selected);
+  // Never assign an inactive current owner just because an old UUID remains on the task.
+  if(selected&&!entries.some(u=>u.user_id===selected)){
+    select.innerHTML+='<option value="'+esc(selected)+'" disabled selected>ผู้รับผิดชอบเดิมไม่พร้อมรับงาน โปรดเลือกใหม่</option>';
+  }
+  select.disabled=false;
+  if(help)help.textContent=entries.length<=1?
+   "ขณะนี้มีบัญชีบุคลากรที่เปิดใช้งานเพียงบัญชีเดียว คุณครูในทะเบียนส่วนตัวยังไม่ได้รับคำเชิญ":
+   "แสดงเฉพาะผู้ใช้งานที่เปิดบัญชีและมีสิทธิ์รับมอบหมายแล้ว";
+ }catch(error){
+  if(ticket!==assigneeLookupRequest||!modal.open||editMode!==mode)return;
+  select.innerHTML='<option value="">ไม่สามารถโหลดรายชื่อผู้รับผิดชอบ</option>';
+  if(help)help.textContent=friendlyError(error);
+ }finally{
+  if(ticket===assigneeLookupRequest)assigneeLookupLoading=false;
+ }
 }
 function meetingsOptions(selected="",editorOnly=false){
  return state.meetings.filter(m=>!editorOnly||isEditor(m.id)).map(m=>'<option value="'+esc(m.id)+'" '+(selected===m.id?"selected":"")+'>'+esc(m.title)+'</option>').join("");
@@ -433,7 +480,8 @@ function openModal(mode,ctx={}){
   const options=state.agendas.filter(a=>a.meeting_id===chosen.id);
   body=field("การประชุม","meetingId",select("meetingId",meetingsOptions(chosen.id,true)))+
     field("ชื่องาน *","title",input("title","text","",true,200))+
-    field("ผู้รับผิดชอบ","ownerId",select("ownerId",usersOptions()))+
+    field("ผู้รับผิดชอบ","ownerId",select("ownerId",'<option value="">กำลังโหลดรายชื่อ…</option>'))+
+    '<p id="assigneeLookupHelp" class="assignee-lookup-help" role="status">กำลังตรวจรายชื่อบัญชีที่เปิดใช้งาน…</p>'+
     field("วันครบกำหนด","dueOn",input("dueOn","date",""))+
     field("รายละเอียด","description",textarea("description"))+
     field("วาระต้นทาง","agendaId",select("agendaId",'<option value="">ไม่ระบุวาระ</option>'+options.map(a=>'<option value="'+esc(a.id)+'" '+(ctx.agendaId===a.id?"selected":"")+'>'+esc(a.title)+'</option>').join("")),"เลือกเฉพาะวาระของการประชุมที่ระบุ");
@@ -446,10 +494,21 @@ function openModal(mode,ctx={}){
  }else if(mode==="taskReview"&&t){
   label=ctx.approve?"ตรวจรับงาน":"ส่งงานกลับไปแก้ไข";
   body='<p class="muted">'+esc(t.title)+'</p>'+field(ctx.approve?"ความเห็น":"เหตุผลที่ต้องแก้ไข *","note",textarea("note","",!ctx.approve));
+ }else if(mode==="taskWithdraw"&&t){
+  if(t.status!=="submitted"||!isOwner(t))return statusMessage("ดึงงานกลับได้เฉพาะผู้รับผิดชอบ และเฉพาะงานที่ยังรอตรวจรับ",true);
+  label="ดึงงานกลับมาแก้ไข";
+  body='<p class="muted">'+esc(t.title)+'</p>'+
+    '<div class="notice-box">งานจะกลับเป็น “กำลังดำเนินการ” และบันทึกเหตุผลไว้ในประวัติเดิม ผู้ตรวจจะไม่เห็นงานนี้ในรายการรอตรวจจนกว่าจะส่งใหม่</div>'+
+    field("เหตุผลที่ดึงงานกลับ *","reason",textarea("reason","",true));
  }else if(mode==="taskOwner"&&t){
+  if(!canReview(t.id)||["submitted","approved","cancelled"].includes(t.status))
+    return statusMessage("งานที่ส่งให้ตรวจแล้วต้องดึงกลับหรือส่งกลับให้แก้ไขก่อนเปลี่ยนผู้รับผิดชอบ",true);
   label="เปลี่ยนผู้รับผิดชอบ";
   body='<p class="muted">'+esc(t.title)+'</p>'+
-    field("ผู้รับผิดชอบ","ownerId",select("ownerId",usersOptions(t.owner_id||"")));
+    field("ผู้รับผิดชอบ","ownerId",select("ownerId",'<option value="">กำลังโหลดรายชื่อ…</option>'))+
+    '<p id="assigneeLookupHelp" class="assignee-lookup-help" role="status">กำลังตรวจรายชื่อบัญชีที่เปิดใช้งาน…</p>'+
+    field("เหตุผลที่เปลี่ยนผู้รับผิดชอบ *","reason",textarea("reason","",true))+
+    '<div class="notice-box">การเปลี่ยนผู้รับผิดชอบจะบันทึกชื่อผู้รับผิดชอบเดิม ผู้รับผิดชอบใหม่ และเหตุผลลงในประวัติงาน</div>';
  }else if(mode==="linkTask"&&t){
   label="ติดตามงานในการประชุมอีกครั้ง";
   const targets=state.meetings.filter(m=>isEditor(m.id)&&!taskLinks(t.id).some(l=>l.meeting_id===m.id));
@@ -512,6 +571,8 @@ function openModal(mode,ctx={}){
  modalReturnFocus=document.activeElement;
  modal.showModal();
  if(mode==="coverPhoto")loadCoverGallery(m.id);
+ if(mode==="taskOwner")loadAssignableMembers(mode,t.id);
+ if(mode==="newTask")loadAssignableMembers(mode,$("f_meetingId")?.value);
  fitModalViewport();
  if(window.matchMedia("(min-width: 901px)").matches)modal.querySelector("input,select,textarea")?.focus();
  else $("modalTitle").focus({preventScroll:true});
@@ -604,12 +665,14 @@ function taskCard(t,full=true){
  const attachments=state.evidence.filter(e=>e.task_id===t.id);
  const canUpdate=(mine||reviewer)&&!["approved","cancelled","submitted"].includes(t.status);
  const canApprove=reviewer&&!mine&&t.status==="submitted";
+ const canWithdraw=mine&&t.status==="submitted";
  const canUpload=mine||reviewer;
  const primary=canApprove?button("ตรวจรับ","taskApprove",{"task-id":t.id},"primary"):
-   canUpdate?button("อัปเดตงาน","taskState",{"task-id":t.id},"primary"):"";
+   canUpdate?button("อัปเดตงาน","taskState",{"task-id":t.id},"primary"):
+   canWithdraw?button("ดึงงานกลับมาแก้ไข","taskWithdraw",{"task-id":t.id}):"";
  const moreActions=
    (canApprove?button("ส่งกลับให้แก้ไข","taskReject",{"task-id":t.id},"danger"):"")+
-   (reviewer&&!["approved","cancelled"].includes(t.status)?button("เปลี่ยนผู้รับผิดชอบ","taskOwner",{"task-id":t.id}):"")+
+   (reviewer&&!["submitted","approved","cancelled"].includes(t.status)?button("เปลี่ยนผู้รับผิดชอบ","taskOwner",{"task-id":t.id}):"")+
    (canUpload?button("เพิ่มบันทึก","taskNote",{"task-id":t.id}):"")+
    (reviewer?button("ติดตามในการประชุมอื่น","linkTask",{"task-id":t.id}):"");
  const fileInputId="evidence-"+t.id;
@@ -847,7 +910,22 @@ async function submitForm(ev){
     }break;
   case "taskState":method="r2_change_task";args={p_task_id:tid,p_new_status:g("status"),p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskReview":method="r2_review_task";args={p_task_id:tid,p_approve:editCtx.approve,p_note:g("note",4000),p_expected_version:t.version};break;
-  case "taskOwner":method="r2_set_task_owner";args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version};break;
+  case "taskWithdraw":
+    method="r2_withdraw_task_submission";
+    args={p_task_id:tid,p_reason:g("reason",2000),p_expected_version:t.version};
+    msg="ดึงงานกลับมาแก้ไขและบันทึกเหตุผลแล้ว";
+    break;
+  case "taskOwner":
+    if(assigneeLookupLoading||$("f_ownerId")?.disabled){
+      showFormError("กำลังตรวจรายชื่อหรือโหลดรายชื่อไม่สำเร็จ โปรดลองใหม่","ownerId");return;
+    }
+    if((t.owner_id||"")===g("ownerId",36)){
+      showFormError("โปรดเลือกผู้รับผิดชอบใหม่ที่ต่างจากเดิม","ownerId");return;
+    }
+    method="r2_set_task_owner";
+    args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version,p_reason:g("reason",2000)};
+    msg="เปลี่ยนผู้รับผิดชอบและบันทึกเหตุผลแล้ว";
+    break;
   case "taskNote":method="r2_add_task_note";args={p_task_id:tid,p_note:g("note",4000)};break;
   case "coverPhoto":{
     const raw=g("driveUrl",900),fileId=raw?parseDriveCoverFileId(raw):null;
@@ -1022,6 +1100,7 @@ async function actionClick(ev){
   case "taskApprove":openModal("taskReview",{taskId:tid,approve:true});break;
   case "taskReject":openModal("taskReview",{taskId:tid,approve:false});break;
   case "taskOwner":openModal("taskOwner",{taskId:tid});break;
+  case "taskWithdraw":openModal("taskWithdraw",{taskId:tid});break;
   case "linkTask":openModal("linkTask",{taskId:tid});break;
   case "taskNote":openModal("taskNote",{taskId:tid});break;
   case "addAccess":openModal("access",{meetingId:mid});break;
@@ -1139,6 +1218,7 @@ function main(){
  });
  modal.addEventListener("cancel",event=>{event.preventDefault();closeModal();});
  modal.addEventListener("close",()=>{
+   ++assigneeLookupRequest;assigneeLookupLoading=false;
    ++coverGalleryRequest;coverGalleryLoading=false;
    modal.style.removeProperty("--ux04-sheet-height");
    modal.style.removeProperty("--ux04-sheet-bottom");
@@ -1171,6 +1251,8 @@ function main(){
  });
  actionForm.addEventListener("change",event=>{
    if(editMode==="taskState"&&event.target?.id==="f_status")updateTaskStatusHelp(event.target.value);
+   if(editMode==="newTask"&&event.target?.id==="f_meetingId")
+     loadAssignableMembers("newTask",event.target.value);
  });
  actionForm.addEventListener("submit",submitForm);
  bootstrap();
