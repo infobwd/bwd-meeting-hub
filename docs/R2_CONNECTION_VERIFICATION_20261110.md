@@ -43,7 +43,7 @@ Remediation context: https://supabase.com/docs/guides/database/database-linter?l
 - [x] Connect project and apply migrations
 - [x] Check table RLS, grants, private bucket and basic role isolation
 - [x] Configure static R2 frontend with project URL + publishable key
-- [ ] Provision a **real first administrator** through Supabase Auth (current test: 0 Auth users, 0 workspace_members)
+- [x] Invite the **first administrator** through Supabase Auth and assign the workspace `admin` role. One account created, one active `admin` membership, one bootstrap audit event. **Email invitation still pending acceptance; no real browser login tested yet.**
 - [ ] Disable unauthorized self-registration / configure Auth URL allowlist and permitted redirect domains
 - [ ] Review SECURITY DEFINER function warnings and any other advisors
 - [ ] Complete real-account sign-in/RLS/Storage testing with admin, secretary, attendee, assignee and guest
@@ -56,4 +56,11 @@ Remediation context: https://supabase.com/docs/guides/database/database-linter?l
 ## Administrator handoff
 Create the first user via **Supabase Dashboard → Authentication → Users → Invite user**, then add role through a privileged SQL editor, using the exact invited email and checking exactly one row is affected (template is in `docs/R2_SETUP.md`). Do not commit real emails or passwords to GitHub.
 
-The R2 web login uses this Supabase project, but with zero Auth users no one can sign in yet. R3 reminders are not implemented.
+The R2 web login uses this Supabase project. One administrator invitation exists and the workspace `admin` role has been granted, but the account has not confirmed the invite or signed in. The administrator must accept the email invite and set credentials through the supported authentication flow before live login can be tested. Do not store the email address or credentials in the public repository. R3 reminders are not implemented.
+
+## First administrator bootstrap — follow-up (2026-11-10)
+- Auth user invite found in **Meeting**; only one Auth user exists.
+- Workspace membership set to `role = admin`, `active = true` in a guarded transaction and audited (`bootstrap_admin`).
+- Verified via an authenticated role simulation that `is_active_member`, `is_admin`, and `can_create_meeting` all return true.
+- Invitation email is **not yet confirmed**, and the account has **not** signed in. Do not mark real end-to-end authentication complete.
+- Do not copy the account's email address, credentials, token or identifiers to this public report.
