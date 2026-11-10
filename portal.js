@@ -412,7 +412,7 @@ async function bootstrap(){
   const {data:membership,error:membershipError}=await state.client.from("workspace_members").select("role,active").eq("user_id",user.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(!membership?.active){
-    state.member=null;clearPrivateView();setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
+    closeTaskHistory();state.member=null;clearPrivateView();setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
   }
   state.member=membership;
   const {data:profile}=await state.client.from("profiles").select("id,display_name").eq("id",user.id).maybeSingle();
@@ -421,7 +421,7 @@ async function bootstrap(){
   setVisible("workspace",true);setVisible("loginSection",false);setVisible("blocked",false);
   await reload();
  }catch(err){
-  state.user=null;state.member=null;clearPrivateView();
+  closeTaskHistory();state.user=null;state.member=null;clearPrivateView();
   setVisible("workspace",false);setVisible("blocked",false);setVisible("loginSection",true);
   $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+friendlyError(err);
  }
