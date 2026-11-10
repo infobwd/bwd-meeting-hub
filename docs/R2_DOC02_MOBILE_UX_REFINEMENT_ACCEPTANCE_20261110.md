@@ -12,15 +12,15 @@ Date: 2026-11-10 | Scope: UI-only improvement after DOC-02 (plan: [DOC-02 Mobile
 - **Mobile/tablet (width <=1100px):** single document view, with two controls `แก้ไขข้อมูล` and `พรีวิว A4`, one scrollable pane visible at a time. Desktop (>1100px) retains two-column edit/preview layout.
 - Editor form scrolls independently while its draft/save/review action row remains available without traversing the entire 13-item form. No 47/53 split. Supports 100dvh and safe-area bottom inset.
 - Compact two-layer status UI: primary DOC-02 status and an independent `รายงานเดิม` chip; further explanation is behind a native disclosure. No implication that reviewer approval is meeting ratification. `บันทึกร่าง` instead of `บันทึกร่างฉบับใหม่`.
-- User-editable meeting-number field now has guidance to enter the verified source number; do not prefill an unverified number from unrelated chat material.
+- User-editable meeting-number field now has guidance to enter the verified source number; do not prefill an unverified number from unrelated chat material. If the saved meeting title already ends in the **exact** same Thai date as `scheduled_on`, the preview hides that duplicate date in its heading only; the original title stays unchanged.
 - Item heading renderer strips the *matching* leading item number from display text only; it does not mutate `agendas.title`, `position`, `section`, `public.minutes` or any saved snapshot.
-- On-screen draft A4 preview builds **approximate** pages at item boundaries, shows page count and repeats `ตัวอย่างฉบับร่าง • ไม่ใช่เอกสารรับรอง` on each page. Long entries may stretch a preview page rather than be truncated. This is **not** the final official page-break/print layout.
+- On-screen draft A4 preview has mobile **พอดีหน้าจอ / ขยายอ่าน** controls (without persisting zoom or changing source), builds **approximate** pages at item boundaries, shows page count and repeats `ตัวอย่างฉบับร่าง • ไม่ใช่เอกสารรับรอง` on each page. Long entries may stretch a preview page rather than be truncated. This is **not** the final official page-break/print layout.
 - Switching to preview captures unsaved editor values locally and rerenders the draft without saving or submitting. Closing clears any private document DOM and invalidates in-flight loads.
 
 ## Regression evidence
 - New `tests/r2-doc02-mobile-refinement.test.mjs` uses fictional 13 topics / five categories and checks 5.2 heading de-duplication, exact source positions, multiple preview pages, per-page watermark, coexistence of draft outcomes and responsive CSS selectors.
 - Updated existing DOC-02 and EXT-02 asset-version tests.
-- Expected GitHub Actions: JS syntax and Node test suite, plus Pages build. **Record actual run results in post-merge verification; do not assume success.**
+- Feature-branch GitHub Actions **run 311 passed** after six new mobile-refinement contract tests and existing Node tests (total outcome to verify again on final branch commit). Main CI and Pages build must be checked after Merge; this is not real iPhone Safari UAT.
 
 ## Preservation and release gates
 - **No SQL migrations, Supabase row edits, real agenda corrections, user/Auth/invite/notifications or Drive permissions.**
