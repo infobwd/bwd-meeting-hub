@@ -789,7 +789,7 @@ function renderExternalMeeting(m){
     esc(participationLabels[p.attendance_status]||"รอตรวจสถานะ")+'</span></div>').join(""):empty("ยังไม่ได้บันทึกผู้เข้าร่วมจริง");
  const ownActions=self&&m.status!=="archived"?
    '<div class="actions">'+
-     (["unknown","planned"].includes(self.attendance_status)?button("ยืนยันว่าเข้าร่วมแล้ว","extMarkAttendance",{"meeting-id":m.id,"attendance-status":"attended"},"outline"):"")+
+     (["unknown","planned","absent"].includes(self.attendance_status)?button(self.attendance_status==="absent"?"แก้ไข: ฉันเข้าร่วมจริง":"ยืนยันว่าเข้าร่วมแล้ว","extMarkAttendance",{"meeting-id":m.id,"attendance-status":"attended"},"outline"):"")+
      (["unknown","planned"].includes(self.attendance_status)&&!own?button("แจ้งว่าไม่ได้เข้าร่วม","extMarkAttendance",{"meeting-id":m.id,"attendance-status":"absent"},"subtle"):"")+
    '</div>':"";
  const reportActions=allowedSelf&&!own?button("＋ เขียนรายงานผลของฉัน","extReport",{"meeting-id":m.id},"primary"):"";
@@ -804,7 +804,7 @@ function renderExternalMeeting(m){
   section("ข้อมูลผู้จัดประชุม",'<p><strong>หน่วยงานผู้จัด:</strong> '+esc(m.host_organization||"ยังไม่ระบุ")+
    '</p><p class="mini">ประเภทหน่วยงาน: '+esc(hostLabels[m.host_type]||"ยังไม่ระบุ")+
    ' · วัน/เวลา: '+esc(formatDate(m.scheduled_on))+' (ยังไม่บันทึกเวลาเริ่ม–เลิก)</p>')+
-  section("ผู้เข้าร่วมประชุมจริง",pRows+ownActions+
+  section("รายชื่อและสถานะการเข้าร่วม",pRows+ownActions+
    (editable&&m.status!=="archived"?'<div class="actions">'+button("＋ เพิ่มผู้เข้าร่วมที่มีบัญชีแล้ว","extParticipant",{"meeting-id":m.id})+'</div>':""))+
   section("รายงานผลการเข้าร่วม",'<div class="notice-box">สรุปสาระสำคัญและข้อสั่งการจากแหล่งที่ตรวจสอบได้ ผู้เข้าร่วมแต่ละคนบันทึกรายงานของตนเอง</div>'+
     (reports.length?reports.map(r=>renderExternalReport(r,m)).join(""):empty("ยังไม่มีรายงานผลการเข้าร่วมที่คุณมีสิทธิ์อ่าน"))+
