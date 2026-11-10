@@ -14,7 +14,7 @@ const sections={"1":"ประธานแจ้งให้ทราบ","2":"�
 const state={
   client:null,user:null,member:null,profile:null,meetings:[],access:[],agendas:[],decisions:[],
   minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],
-  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},loading:false
+  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false
 };
 const modal=$("modal"), actionForm=$("actionForm");
 let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus;
@@ -287,7 +287,7 @@ async function bootstrap(){
   state.user=user||null;
   if(!user){
    window.BWDMeetingPdfReader?.close?.();
-   state.member=null;state.activeMeeting=null;state.agendaOpen={};setVisible("loginSection",true);
+   state.member=null;state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};setVisible("loginSection",true);
    setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountName").textContent="";return;
   }
   $("logout").hidden=false;$("accountName").textContent=user.email||"บัญชีผู้ใช้";
@@ -321,29 +321,52 @@ function meetingCard(m){
 }
 function taskCard(t,full=false){
  const links=taskLinks(t.id);
- const origin=links.map(l=>meeting(l.meeting_id)?.title).filter(Boolean).join(" • ");
+ const origin=[...new Set(links.map(l=>meeting(l.meeting_id)?.title).filter(Boolean))].join(" • ");
  const mine=isOwner(t),reviewer=canReview(t.id);
- const upd=state.updates.filter(u=>u.task_id===t.id).slice(0,full?10:2);
+ const updates=state.updates.filter(u=>u.task_id===t.id);
+ const upd=updates.slice(0,full?10:2);
  const attachments=state.evidence.filter(e=>e.task_id===t.id);
- return '<article class="card"><div class="card-head"><h3>'+esc(t.title)+'</h3>'+statusLabel(t.status)+'</div>'+
-  '<p>ผู้รับผิดชอบ: '+esc(t.owner_id?fullName(t.owner_id):"ยังไม่มอบหมาย")+'</p>'+
-  '<p>กำหนด: '+esc(formatDate(t.due_on))+'</p>'+
-  (origin?'<p>เกี่ยวข้องกับ '+esc(origin)+'</p>':'')+
-  (t.description?'<p>'+esc(t.description)+'</p>':'')+
-  '<div class="actions">'+
-  (((mine||reviewer)&&!["approved","cancelled","submitted"].includes(t.status))?button("อัปเดตงาน","taskState",{"task-id":t.id},"primary"):"")+
-  (reviewer&&!mine&&t.status==="submitted"?button("ตรวจรับ","taskApprove",{"task-id":t.id},"primary")+button("ให้แก้ไข","taskReject",{"task-id":t.id},"danger"):"")+
-  (reviewer&&!["approved","cancelled"].includes(t.status)?button("เปลี่ยนผู้รับผิดชอบ","taskOwner",{"task-id":t.id}):"")+
-  ((mine||reviewer)?button("เพิ่มบันทึก","taskNote",{"task-id":t.id}):"")+
-  (reviewer?button("ติดตามในการประชุมอื่น","linkTask",{"task-id":t.id}):"")+
-  '</div>'+
-  ((mine||reviewer)?'<div class="field" style="margin-top:9px"><label for="evidence-'+esc(t.id)+'">แนบหลักฐาน (PDF/รูปภาพ สูงสุด 10 MB)</label><input id="evidence-'+esc(t.id)+'" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" data-evidence-upload="'+esc(t.id)+'"></div>':'')+
-  (attachments.length?'<div class="evidence-list"><h3>หลักฐานส่วนตัว</h3>'+
-     attachments.map(e=>'<div class="evidence-file"><div class="evidence-file-name">'+esc(e.original_name||"ไฟล์หลักฐาน")+'</div>'+
-       '<div class="actions">'+button("ดูตัวอย่าง","previewEvidence",{"object-path":e.object_path},"primary")+
-       button("ดาวน์โหลด","downloadEvidence",{"object-path":e.object_path})+'</div></div>').join("")+'</div>':'')+
-  (upd.length?'<div><h3>ประวัติงาน</h3>'+upd.map(u=>'<div class="feed">'+esc(formatDate((u.created_at||"").slice(0,10)))+' • '+esc(fullName(u.author_id))+' • '+esc(statuses[u.new_status]||u.new_status)+(u.note?'<p>'+esc(u.note)+'</p>':'')+'</div>').join("")+'</div>':'')+
-  '</article>';
+ const canUpdate=(mine||reviewer)&&!["approved","cancelled","submitted"].includes(t.status);
+ const canApprove=reviewer&&!mine&&t.status==="submitted";
+ const canUpload=mine||reviewer;
+ const primary=canApprove?button("ตรวจรับ","taskApprove",{"task-id":t.id},"primary"):
+   canUpdate?button("อัปเดตงาน","taskState",{"task-id":t.id},"primary"):"";
+ const moreActions=
+   (canApprove?button("ส่งกลับให้แก้ไข","taskReject",{"task-id":t.id},"danger"):"")+
+   (reviewer&&!["approved","cancelled"].includes(t.status)?button("เปลี่ยนผู้รับผิดชอบ","taskOwner",{"task-id":t.id}):"")+
+   (canUpload?button("เพิ่มบันทึก","taskNote",{"task-id":t.id}):"")+
+   (reviewer?button("ติดตามในการประชุมอื่น","linkTask",{"task-id":t.id}):"");
+ const fileInputId="evidence-"+t.id;
+ const evidenceInput=canUpload?
+   '<div class="field task-evidence-upload"><label for="'+esc(fileInputId)+'">แนบหลักฐาน (PDF/รูปภาพ สูงสุด 10 MB)</label>'+
+   '<input id="'+esc(fileInputId)+'" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" data-evidence-upload="'+esc(t.id)+'"></div>':"";
+ const evidenceList=attachments.length?
+   '<div class="task-evidence-list"><h4>ไฟล์หลักฐาน ('+attachments.length+')</h4>'+
+   attachments.map(e=>'<div class="evidence-file"><div class="evidence-file-name">'+esc(e.original_name||"ไฟล์หลักฐาน")+'</div>'+
+     '<div class="actions">'+button("ดูตัวอย่าง","previewEvidence",{"object-path":e.object_path},"primary")+
+       button("ดาวน์โหลด","downloadEvidence",{"object-path":e.object_path})+'</div></div>').join("")+'</div>':"";
+ const history=upd.length?
+   '<div class="task-history"><h4>ประวัติงาน</h4>'+
+   upd.map(u=>'<div class="feed">'+esc(formatDate((u.created_at||"").slice(0,10)))+' • '+esc(fullName(u.author_id))+
+     ' • '+esc(statuses[u.new_status]||u.new_status)+(u.note?'<p>'+esc(u.note)+'</p>':'')+'</div>').join("")+
+   (updates.length>upd.length?'<p class="mini">ยังมีประวัติก่อนหน้านี้อีก '+(updates.length-upd.length)+' รายการ</p>':"")+'</div>':"";
+ const countLabel=attachments.length+" ไฟล์ · "+updates.length+" บันทึก";
+ return '<article class="card task-card" data-task-card="'+esc(t.id)+'">'+
+   '<div class="task-card-head"><h3>'+esc(t.title)+'</h3>'+statusLabel(t.status)+'</div>'+
+   '<div class="task-meta"><p><span>ผู้รับผิดชอบ</span><strong>'+esc(t.owner_id?fullName(t.owner_id):"ยังไม่มอบหมาย")+'</strong></p>'+
+   '<p><span>กำหนดส่ง</span><strong>'+esc(formatDate(t.due_on))+'</strong></p></div>'+
+   (origin?'<p class="task-origin">จากการประชุม: '+esc(origin)+'</p>':"")+
+   (primary?'<div class="task-primary">'+primary+'</div>':"")+
+   '<details class="task-details" data-task-details="'+esc(t.id)+'" '+(state.taskDetailsOpen[t.id]?'open':"")+'>'+
+     '<summary><span>รายละเอียดและหลักฐาน</span><span class="task-detail-count">'+countLabel+'</span>'+
+       '<span class="task-detail-chevron" aria-hidden="true">⌄</span></summary>'+
+     '<div class="task-detail-body">'+
+       (t.description?'<div class="task-description"><h4>รายละเอียดงาน</h4><p>'+esc(t.description)+'</p></div>':"")+
+       (moreActions?'<div class="actions task-more-actions">'+moreActions+'</div>':"")+
+       evidenceInput+evidenceList+history+
+       (!t.description&&!moreActions&&!evidenceInput&&!evidenceList&&!history?'<p class="mini">ยังไม่มีรายละเอียดเพิ่มเติม</p>':"")+
+     '</div></details>'+
+   '</article>';
 }
 function renderOverview(){
  const mine=state.tasks.filter(isOwner),review=state.tasks.filter(t=>t.status==="submitted"&&canReview(t.id));
@@ -411,7 +434,7 @@ function renderMeeting(m){
     (editable&&min?.status==="draft"&&min.body?button("ส่งให้ตรวจทาน","submitMinutes",{"meeting-id":m.id},"primary"):"")+
     (isAdmin()&&min?.status==="submitted"&&min.updated_by!==state.user?.id?button("ยืนยันตรวจทาน","approveMinutes",{"meeting-id":m.id},"primary")+button("ส่งกลับให้แก้ไข","rejectMinutes",{"meeting-id":m.id},"danger"):"")+
     (min?.status==="approved"?button("พิมพ์ / บันทึกเป็น PDF","printMinutes",{"meeting-id":m.id}):"")+'</div>')+
-  '</div><div id="bwd-tasks" class="meeting-target">'+section("งานที่เชื่อมกับการประชุม",linked.length?'<div class="cards">'+linked.map(l=>state.tasks.find(t=>t.id===l.task_id)).filter(Boolean).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีภารกิจที่เชื่อมกับการประชุม"),
+  '</div><div id="bwd-tasks" class="meeting-target">'+section("งานที่เชื่อมกับการประชุม",linked.length?'<div class="cards">'+[...new Map(linked.map(l=>state.tasks.find(t=>t.id===l.task_id)).filter(Boolean).map(t=>[t.id,t])).values()].map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีภารกิจที่เชื่อมกับการประชุม"),
     editable?button("＋ เพิ่มงาน","newTask",{"meeting-id":m.id},"primary"):"")+
   '</div><div id="bwd-participants" class="meeting-target">'+section("ผู้มีสิทธิ์เข้าถึง",attendees.length?attendees.map(a=>'<div class="item">'+esc(fullName(a.user_id))+' <span class="status">'+esc(a.role==="editor"?"ผู้จัดการ":a.role==="guest"?"ผู้เข้าร่วมภายนอก":"ผู้เข้าประชุม")+'</span></div>').join(""):empty("ไม่มีผู้เข้าร่วมในรายชื่อ"),
     editable?button("เพิ่มผู้เข้าร่วม","addAccess",{"meeting-id":m.id}):"")+'</div></div>';
@@ -419,9 +442,9 @@ function renderMeeting(m){
 
 function renderTasks(){
  const filtered=state.tasks.filter(t=>state.taskFilter==="all"||state.taskFilter==="mine"&&isOwner(t)||state.taskFilter==="review"&&t.status==="submitted"&&canReview(t.id));
- return '<div class="flex-between" style="margin-bottom:15px"><h2>ภารกิจที่เกี่ยวข้อง</h2>'+
+ return '<div class="flex-between task-list-head"><h2>ภารกิจที่เกี่ยวข้อง</h2>'+
   '<select class="filter" id="taskFilter" aria-label="กรองภารกิจ"><option value="all">งานที่มองเห็นทั้งหมด</option><option value="mine" '+(state.taskFilter==="mine"?"selected":"")+'>งานของฉัน</option><option value="review" '+(state.taskFilter==="review"?"selected":"")+'>งานรอให้ฉันตรวจรับ</option></select></div>'+
-  (filtered.length?'<div class="cards">'+filtered.map(t=>taskCard(t,true)).join("")+'</div>':empty("ไม่พบงานในหมวดนี้"));
+  (filtered.length?'<div class="cards task-cards">'+filtered.map(t=>taskCard(t,true)).join("")+'</div>':empty("ไม่พบงานในหมวดนี้"));
 }
 function render(){
  const pageTitle=state.page==="overview"?"ภาพรวม":state.page==="meetings"?(state.activeMeeting?"รายละเอียดการประชุม":"การประชุม"):"ภารกิจ";
@@ -679,6 +702,9 @@ function main(){
  $("workspace").addEventListener("click",actionClick);
  $("workspace").addEventListener("toggle",ev=>{
    const detail=ev.target;
+   if(detail?.matches?.("details[data-task-details]")){
+     state.taskDetailsOpen[detail.dataset.taskDetails]=detail.open;
+   }
    if(detail?.matches?.("details[data-agenda-group]")&&detail.dataset.meetingId===state.activeMeeting){
      state.agendaOpen[agendaKey(detail.dataset.meetingId,detail.dataset.agendaGroup)]=detail.open;
    }
