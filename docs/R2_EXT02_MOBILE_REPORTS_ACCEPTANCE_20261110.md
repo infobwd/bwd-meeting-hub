@@ -49,3 +49,12 @@ Status: Implementation in code; CI and production release gates are tracked sepa
 - Separate school-authorized two-account acceptance before official deployment.
 
 **This document does not certify official acceptance by the school or ratification of any meeting.**
+
+## Post-installation verification — 2026-11-10
+- **GitHub CI:** PR [#32](https://github.com/infobwd/bwd-meeting-hub/pull/32) checks passed, latest observed commit `be9a4e76`, workflow run **249**. Subsequent docs-only commits require final CI verification before merge.
+- **Supabase migration installed successfully:** `20261110160217 ext02_external_attendance_ui_actions_20261110`. No DDL table changes; only two participant-oriented RPC functions created.
+- **New RPC privileges verified read-only:** both `r2_ext_attach_document(uuid,text,text)` and `r2_ext_set_attendance(uuid,text,text)` have `anon EXECUTE=false`, `authenticated EXECUTE=true` and `SECURITY DEFINER=true`. Each has active-member/meeting-scope/self-participation checks in source; an authenticated role still needs per-role negative execution tests.
+- **Before/after aggregate data counts:** 1 legacy meeting, 13 agenda rows, 1 minutes row, 1 task, 13 existing meeting-document metadata rows, 0 external participation rows, 0 external reports. Legacy meeting remains unclassified (`meeting_mode=NULL`); no actual meeting data fabricated or changed.
+- **Supabase security advisor:** callable authenticated definer warning count **31** (29 prior + 2 deliberate new RPCs); private staff-directory RLS/no-policy INFO and Auth leaked-password-protection WARN unchanged. Review references: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+- **Still pending:** independent real-account RLS/RPC acceptance, authorized Drive file test, iPhone/Android screen testing, backup/restore and school privacy/signature/export approval. Not official production sign-off.
+
