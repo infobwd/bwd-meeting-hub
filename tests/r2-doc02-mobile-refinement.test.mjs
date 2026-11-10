@@ -37,6 +37,18 @@ test("DOC-02 mobile: removes duplicate matching number only at render time",()=>
  assert.equal(doc.cleanItemTitle({title:"วาระที่ 5.2 — เรื่องเดิม",display_no:"5.2"}),"เรื่องเดิม");
 });
 
+test("DOC-02 mobile: preview does not repeat an exact date from its meeting title",()=>{
+ const withDate={...meeting,title:"ประชุมคณะกรรมการ (สมมติ) — 10 พฤศจิกายน 2569"};
+ doc.setContextForTest({meeting:withDate,agendas,documents:[]});
+ doc.setTemplateForTest("legacy5");
+ const fields=doc.sourceFields("minutes",withDate,agendas);
+ const markup=doc.previewMarkup("minutes",fields);
+ assert.equal(doc.previewMeetingTitle(withDate),"ประชุมคณะกรรมการ (สมมติ)");
+ assert.match(markup,/ยังไม่ระบุครั้งที่ \(กรอกในข้อมูลหัวเอกสาร\)/);
+ assert.equal((markup.match(/10 พฤศจิกายน 2569/g)||[]).length,1);
+ assert.equal(withDate.title,"ประชุมคณะกรรมการ (สมมติ) — 10 พฤศจิกายน 2569");
+});
+
 test("DOC-02 mobile: approximate A4 preview preserves all 13 items across pages with draft watermark",()=>{
  const fields=fixture();
  const pages=doc.previewPages(fields.items,"minutes");
