@@ -15,12 +15,12 @@ test("meeting reader UI has a single controlled modal and return navigation",()=
   assert.match(html,/id="readerBackDrive"/);
   assert.match(html,/meeting-pdf-reader.js/);
   assert.match(reader,/dialog\.addEventListener\("close",reset\)/);
-  assert.match(reader,/lastFocus\.focus/);
+  assert.match(reader,/focus\.focus/);
   assert.match(css,/safe-area-inset-bottom/);
 });
 test("meeting documents are found through RLS-filtered rows, no embedded link fixtures",()=>{
   assert.match(portal,/c\.from\("meeting_documents"\)\.select/);
-  assert.match(portal,/data-document-id/);
+  assert.match(portal,/"document-id":d\.id/);
   assert.match(portal,/readMeetingPdf/);
   assert.match(portal,/state\.documents\.find/);
   assert.match(reader,/\^\[a-zA-Z0-9_-\]\{10,128\}\$/);
