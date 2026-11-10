@@ -29,7 +29,7 @@ const headerKeys=[
  ["other_attendees","ผู้เข้าร่วมประชุมที่ไม่ใช่กรรมการ (ถ้ามี)"]
 ];
 let context=null,activeType="agenda",documents={agenda:null,minutes:null},templateKey="legacy5",
-    busy=false,hasUnsaved=false,sessionGeneration=0,activeView="edit";
+    busy=false,hasUnsaved=false,sessionGeneration=0,activeView="edit",previewZoom="fit";
 
 function ordered(items){return items.slice().sort((a,b)=>Number(a.section)-Number(b.section)||Number(a.position)-Number(b.position));}
 function sourceFields(type,meeting,agendas){
@@ -273,6 +273,7 @@ function renderDialog(){
  $("doc02Error").hidden=true;$("doc02Error").textContent="";
  hasUnsaved=false;
  syncView();
+ setZoom(previewZoom);
 }
 function captureForm(){
  const latest=draftFields(activeType);
@@ -317,6 +318,16 @@ function syncView(){
   button.setAttribute("aria-pressed",String(selected));
  });
 }
+function setZoom(level){
+ if(!["fit","large"].includes(level))return;
+ previewZoom=level;
+ const scroll=$("doc02Preview");
+ if(scroll)scroll.dataset.zoom=level;
+ $("doc02ZoomControls")?.querySelectorAll("[data-doc02-zoom]").forEach(button=>{
+  button.setAttribute("aria-pressed",String(button.dataset.doc02Zoom===level));
+ });
+}
+
 function setView(view){
  if(!context||!["edit","preview"].includes(view))return;
  if(view==="preview"){
@@ -325,6 +336,7 @@ function setView(view){
  }
  activeView=view;
  syncView();
+ setZoom(previewZoom);
  const pane=view==="preview"?$("doc02PreviewPane"):$("doc02Editor");
  pane?.scrollTo?.({top:0,behavior:"auto"});
 }
@@ -366,6 +378,8 @@ async function run(action,button){
  }finally{busy=false;$("doc02Actions").querySelectorAll("button").forEach(b=>b.disabled=false);}
 }
 function handleClick(event){
+ const zoom=event.target.closest("[data-doc02-zoom]");
+ if(zoom){setZoom(zoom.dataset.doc02Zoom);return;}
  const view=event.target.closest("[data-doc02-view]");
  if(view){setView(view.dataset.doc02View);return;}
  const tab=event.target.closest("[data-doc02-type]");
@@ -385,7 +399,7 @@ async function open(options){
  if(!options?.meeting||options.meeting.meeting_mode==="externally_hosted"||
     options.meeting.meeting_mode==="co_hosted")return;
  const generation=++sessionGeneration;
- context=options;activeType=options.type==="minutes"?"minutes":"agenda";activeView="edit";hasUnsaved=false;
+ context=options;activeType=options.type==="minutes"?"minutes":"agenda";activeView="edit";previewZoom="fit";hasUnsaved=false;
  const dialog=$("doc02Dialog");if(!dialog)return;
  $("doc02Success").textContent="";
  dialog.showModal();
@@ -404,7 +418,7 @@ async function open(options){
 }
 function closePrivate(){
  ++sessionGeneration;context=null;documents={agenda:null,minutes:null};
- activeType="agenda";activeView="edit";hasUnsaved=false;busy=false;
+ activeType="agenda";activeView="edit";previewZoom="fit";hasUnsaved=false;busy=false;
  for(const id of ["doc02Editor","doc02Preview","doc02Status","doc02Actions","doc02Success"]){
   const node=$(id);if(node)node.replaceChildren();
  }
