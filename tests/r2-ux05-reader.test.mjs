@@ -13,7 +13,7 @@ function mockReader(){
     if(!nodes.has(id)){
       const listeners=new Map();
       const node={
-        id, hidden:false, disabled:false, open:false, src:"", href:"", value:"",
+        id, isConnected:true, hidden:false, disabled:false, open:false, src:"", href:"", value:"",
         textContent:"", style:{}, classList:{toggle(){}}, listeners,
         setAttribute(name,value){this[name]=value;},
         addEventListener(type,callback){
