@@ -195,7 +195,10 @@ returns integer language plpgsql security definer set search_path=''
 as $fn$
 declare v_row public.external_attendance_reports%rowtype;v_version integer;
 begin
- if auth.uid() is null or not private.is_staff() then raise exception 'Access denied'; end if;
+ if auth.uid() is null or not private.is_staff() or not private.can_view_meeting(p_meeting_id)
+   or not exists(select 1 from public.meeting_participations where meeting_id=p_meeting_id and user_id=auth.uid())
+   or not exists(select 1 from public.meetings where id=p_meeting_id and meeting_mode='externally_hosted' and status<>'archived')
+   then raise exception 'Access denied'; end if;
  select * into v_row from public.external_attendance_reports
    where meeting_id=p_meeting_id and author_id=auth.uid() for update;
  if not found or v_row.version is distinct from p_expected_version
@@ -219,6 +222,10 @@ as $fn$
 declare v_row public.external_attendance_reports%rowtype;v_version integer;v_reason text;
 begin
  if auth.uid() is null or not private.is_staff() then raise exception 'Access denied'; end if;
+ if not private.can_view_meeting(p_meeting_id)
+   or not exists(select 1 from public.meeting_participations where meeting_id=p_meeting_id and user_id=auth.uid())
+   or not exists(select 1 from public.meetings where id=p_meeting_id and meeting_mode='externally_hosted' and status<>'archived')
+   then raise exception 'Access denied'; end if;
  v_reason:=btrim(coalesce(p_reason,''));
  if v_reason='' or char_length(v_reason)>2000 then raise exception 'Withdrawal reason required'; end if;
  select * into v_row from public.external_attendance_reports
@@ -245,6 +252,8 @@ declare v_row public.external_attendance_reports%rowtype;v_version integer;v_not
 begin
  if auth.uid() is null or not private.can_edit_meeting(p_meeting_id)
    then raise exception 'Reviewer only'; end if;
+ if not exists(select 1 from public.meetings where id=p_meeting_id and meeting_mode='externally_hosted' and status<>'archived')
+   then raise exception 'Invalid external meeting'; end if;
  if p_author_id is not distinct from auth.uid() then raise exception 'Independent reviewer required'; end if;
  v_note:=btrim(coalesce(p_note,''));
  if not coalesce(p_approve,false) and v_note='' then raise exception 'Return reason required'; end if;
