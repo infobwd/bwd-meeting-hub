@@ -29,7 +29,7 @@ const headerKeys=[
  ["other_attendees","ผู้เข้าร่วมประชุมที่ไม่ใช่กรรมการ (ถ้ามี)"]
 ];
 let context=null,activeType="agenda",documents={agenda:null,minutes:null},templateKey="legacy5",
-    busy=false,hasUnsaved=false;
+    busy=false,hasUnsaved=false,sessionGeneration=0;
 
 function ordered(items){return items.slice().sort((a,b)=>Number(a.section)-Number(b.section)||Number(a.position)-Number(b.position));}
 function sourceFields(type,meeting,agendas){
@@ -225,7 +225,9 @@ async function queryLatest(type){
  return data?.[0]||null;
 }
 async function reloadDocuments(){
+ const generation=sessionGeneration;
  const [ag,mi]=await Promise.all([queryLatest("agenda"),queryLatest("minutes")]);
+ if(generation!==sessionGeneration||!context)return;
  documents={agenda:ag,minutes:mi};
  renderDialog();
 }
@@ -283,6 +285,7 @@ function close(){
 async function open(options){
  if(!options?.meeting||options.meeting.meeting_mode==="externally_hosted"||
     options.meeting.meeting_mode==="co_hosted")return;
+ const generation=++sessionGeneration;
  context=options;activeType=options.type==="minutes"?"minutes":"agenda";hasUnsaved=false;
  const dialog=$("doc02Dialog");if(!dialog)return;
  $("doc02Success").textContent="";
@@ -292,11 +295,21 @@ async function open(options){
   const {data,error}=await options.client.from("meeting_document_settings")
    .select("agenda_template_key").eq("meeting_id",options.meeting.id).maybeSingle();
   if(error)throw error;
+  if(generation!==sessionGeneration||!context)return;
   templateKey=data?.agenda_template_key||"legacy5";
   await reloadDocuments();
  }catch(error){
-  setError("ไม่สามารถโหลดร่างเอกสาร: "+(error?.message||"โปรดลองใหม่"));
+  if(generation===sessionGeneration&&context)
+   setError("ไม่สามารถโหลดร่างเอกสาร: "+(error?.message||"โปรดลองใหม่"));
  }
+}
+function closePrivate(){
+ ++sessionGeneration;context=null;documents={agenda:null,minutes:null};
+ activeType="agenda";hasUnsaved=false;busy=false;
+ for(const id of ["doc02Editor","doc02Preview","doc02Status","doc02Actions","doc02Success"]){
+  const node=$(id);if(node)node.replaceChildren();
+ }
+ const dialog=$("doc02Dialog");if(dialog?.open)dialog.close();
 }
 function init(){
  const dialog=$("doc02Dialog");if(!dialog)return;
@@ -306,7 +319,7 @@ function init(){
  $("doc02Editor").addEventListener("input",()=>{hasUnsaved=true;$("doc02Success").textContent="";});
 }
 global.BWDDoc02={
- init,open,
+ init,open,closePrivate,
  // Pure formatters exported for deterministic regression tests (no live calls).
  sourceFields,previewMarkup,escapeHtml,titleForSection,
  setTemplateForTest(key){templateKey=key;},
