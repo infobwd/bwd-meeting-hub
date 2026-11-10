@@ -7,11 +7,11 @@
   <title>BWD Meeting Hub — พื้นที่ทำงานร่วมกัน (R2)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./portal.css?v=ux04-forms1">
+  <link rel="stylesheet" href="./portal.css?v=ux05">
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./portal.js?v=ux04-forms1" defer></script>
-  <script src="./meeting-pdf-reader.js?v=r2sports2" defer></script>
+  <script src="./meeting-pdf-reader.js?v=ux05" defer></script>
 </head>
 <body>
   <a class="skip" href="#screen">ข้ามไปยังเนื้อหา</a>
@@ -105,13 +105,14 @@
         </details>
       </header>
       <p id="readerNotice" class="reader-draft">ฉบับร่าง — ยังไม่รับรอง</p>
+      <p id="readerMode" class="reader-mode" aria-live="polite">กำลังเตรียมตัวอ่านเอกสาร</p>
       <p id="readerStatus" class="reader-status" role="status" aria-live="polite"></p>
       <div class="reader-content">
         <div id="readerDrivePane" class="reader-drive-pane">
           <iframe id="readerDriveFrame" title="อ่าน PDF จาก Google Drive" src="about:blank" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
         </div>
         <div id="readerCanvasPane" class="reader-canvas-pane" hidden>
-          <div id="readerCanvasHost" class="reader-canvas-host" aria-label="อ่าน PDF ปัดซ้ายหรือขวาเพื่อเปลี่ยนหน้าเมื่อไม่ขยาย">
+          <div id="readerCanvasHost" class="reader-canvas-host" tabindex="0" aria-keyshortcuts="ArrowLeft ArrowRight PageUp PageDown Home End" aria-label="พื้นที่อ่าน PDF ปัดซ้ายขวาหรือใช้ปุ่มลูกศรเพื่อเปลี่ยนหน้าเมื่อไม่ขยาย">
             <canvas id="readerCanvas" aria-label="หน้ากระดาษ PDF"></canvas>
           </div>
         </div>
