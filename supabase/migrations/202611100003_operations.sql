@@ -43,7 +43,10 @@ begin
   if not private.can_edit_meeting(p_meeting_id) then raise exception 'Access denied'; end if;
   if p_role not in ('editor','attendee','guest') then raise exception 'Invalid access role'; end if;
   if not exists(select 1 from public.workspace_members w
-      where w.user_id=p_user_id and w.active) then raise exception 'Account is not active in workspace'; end if;
+      where w.user_id=p_user_id and w.active
+      and (w.role <> 'guest' or p_role = 'guest')) then
+    raise exception 'Account is not active or requested access exceeds guest role';
+  end if;
   if exists(select 1 from public.meetings m where m.id=p_meeting_id and m.status='archived') then
     raise exception 'Meeting is archived';
   end if;
@@ -63,7 +66,7 @@ as $$
 declare v_id uuid;v_position integer;
 begin
   if not private.can_edit_meeting(p_meeting_id) then raise exception 'Access denied'; end if;
-  if exists(select 1 from public.meetings m where m.id=p_meeting_id and m.status in ('ratified','archived')) then
+  if exists(select 1 from public.meetings m where m.id=p_meeting_id and m.status in ('minutes_review','ratified','archived')) then
     raise exception 'Cannot edit ratified or archived meeting';
   end if;
   if p_section not between 1 and 5 or nullif(btrim(p_title),'') is null then raise exception 'Invalid agenda'; end if;
