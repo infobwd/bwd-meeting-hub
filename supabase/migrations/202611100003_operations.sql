@@ -66,7 +66,7 @@ as $$
 declare v_id uuid;v_position integer;
 begin
   if not private.can_edit_meeting(p_meeting_id) then raise exception 'Access denied'; end if;
-  if exists(select 1 from public.meetings m where m.id=p_meeting_id and m.status in ('minutes_review','ratified','archived')) then
+  if exists(select 1 from public.meetings m where m.id=p_meeting_id and m.status in ('minutes_review','reviewed','ratified','archived')) then
     raise exception 'Cannot edit ratified or archived meeting';
   end if;
   if p_section not between 1 and 5 or nullif(btrim(p_title),'') is null then raise exception 'Invalid agenda'; end if;
@@ -88,7 +88,7 @@ declare v_meeting uuid;v_id uuid;
 begin
   select meeting_id into v_meeting from public.agendas where id=p_agenda_id;
   if v_meeting is null or not private.can_edit_meeting(v_meeting) then raise exception 'Access denied'; end if;
-  if exists(select 1 from public.meetings where id=v_meeting and status in ('ratified','archived')) then
+  if exists(select 1 from public.meetings where id=v_meeting and status in ('reviewed','ratified','archived')) then
     raise exception 'Cannot change ratified minutes';
   end if;
   if exists(select 1 from public.minutes where meeting_id=v_meeting and status <> 'draft') then
@@ -113,7 +113,7 @@ as $$
 declare v_version integer;v_current public.minutes%rowtype;
 begin
   if not private.can_edit_meeting(p_meeting_id) then raise exception 'Access denied'; end if;
-  if not exists(select 1 from public.meetings where id=p_meeting_id and status not in ('ratified','archived')) then
+  if not exists(select 1 from public.meetings where id=p_meeting_id and status not in ('reviewed','ratified','archived')) then
     raise exception 'Meeting not editable';
   end if;
   if char_length(coalesce(p_body,''))>100000 then raise exception 'Minutes too long'; end if;
@@ -170,13 +170,8 @@ begin
     updated_at=now()
   where id=v_row.id;
   update public.meetings
-  set status=case when p_approve then 'ratified' else 'held' end,updated_at=now()
+  set status=case when p_approve then 'reviewed' else 'held' end,updated_at=now()
   where id=p_meeting_id;
-  if p_approve then
-    update public.decisions d set status='ratified',ratified_by=auth.uid(),ratified_at=now()
-    from public.agendas a where d.agenda_id=a.id and a.meeting_id=p_meeting_id
-      and d.status='recorded';
-  end if;
   insert into public.audit_events(actor_id,action,target_table,target_id,details)
   values(auth.uid(),case when p_approve then 'approve' else 'reject' end,
     'minutes',p_meeting_id,jsonb_build_object('note',left(coalesce(p_note,''),2000)));
