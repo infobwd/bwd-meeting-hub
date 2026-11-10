@@ -1126,6 +1126,9 @@ function main(){
   if(ev.target.id==="taskFilter"){state.taskFilter=ev.target.value;render();return;}
   if(ev.target.dataset.evidenceUpload){const file=ev.target.files?.[0];if(file)uploadEvidence(file,ev.target.dataset.evidenceUpload,ev.target);}
  });
+ modal.addEventListener("error",event=>{
+   if(event.target?.matches?.(".cover-gallery-photo img"))event.target.hidden=true;
+ },true);
  modal.addEventListener("click",event=>{
    if(event.target===modal){closeModal();return;}
    if(editMode!=="coverPhoto")return;
