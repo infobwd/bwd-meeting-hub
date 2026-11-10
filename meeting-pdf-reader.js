@@ -18,13 +18,15 @@ const ui={
   status:$("readerStatus"),pageBar:$("readerPageBar"),page:$("readerPage"),
   total:$("readerTotal"),prev:$("readerPrev"),next:$("readerNext"),
   fitWidth:$("readerFitWidth"),fitPage:$("readerFitPage"),
-  zoomOut:$("readerZoomOut"),zoomIn:$("readerZoomIn"),zoomLabel:$("readerZoomLabel")
+  zoomOut:$("readerZoomOut"),zoomIn:$("readerZoomIn"),zoomLabel:$("readerZoomLabel"),
+  quick:$("readerQuickModes"),quickWidth:$("readerQuickWidth"),quickPage:$("readerQuickPage"),
+  quickOut:$("readerQuickOut"),quickIn:$("readerQuickIn")
 };
-let lastFocus=null,current=null,pdf=null,pdfjs=null,loadingId=0,renderId=0,renderTask=null,zoom=1,fit="width",page=1,swipeStart=null,pinchStart=null,lastTap=null,resizeTimer=0,activeController=null;
+let lastFocus=null,current=null,pdf=null,pdfjs=null,loadingId=0,renderId=0,renderTask=null,zoom=1,fit="width",preferredFit="width",page=1,swipeStart=null,pinchStart=null,lastTap=null,resizeTimer=0,activeController=null;
 function message(value,error=false){ui.status.textContent=value||"";ui.status.hidden=!value;ui.status.classList.toggle("reader-error",error);}
 function showDrive(reason=""){
   if(current?.id)ui.frame.src="https://drive.google.com/file/d/"+encodeURIComponent(current.id)+"/preview";
-  ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;
+  ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;ui.quick.hidden=true;
   ui.driveButton.hidden=true;ui.source.textContent="อ่านผ่าน Google Drive";
   ui.mode.textContent="ตัวอ่าน Google Drive (ตามสิทธิ์บัญชีของคุณ)";
   ui.menu.open=false;
@@ -33,7 +35,7 @@ function showDrive(reason=""){
 }
 function showBook(source){
   ui.frame.src="about:blank";
-  ui.drive.hidden=true;ui.localPane.hidden=false;ui.pageBar.hidden=false;
+  ui.drive.hidden=true;ui.localPane.hidden=false;ui.pageBar.hidden=false;ui.quick.hidden=false;
   ui.driveButton.hidden=false;ui.source.textContent=source;
   ui.mode.textContent=source;
   ui.menu.open=false;
@@ -54,7 +56,7 @@ function reset(){
   ui.frame.src="about:blank";
   ui.local.value="";
   clearPdf().catch(()=>{});
-  ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;
+  ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;ui.quick.hidden=true;
   ui.source.textContent="";ui.mode.textContent="";message("");
   ui.canvas.style.transform="";ui.canvas.style.transformOrigin="";
   ui.menu.open=false;
@@ -91,8 +93,12 @@ function updateToolbar(){
   ui.page.max=ready?String(pdf.numPages):"1";
   ui.total.textContent=ready?"/ "+pdf.numPages:"";
   ui.fitWidth.disabled=!ready;ui.fitPage.disabled=!ready;
+  ui.quickWidth.disabled=!ready;ui.quickPage.disabled=!ready;
+  ui.quickOut.disabled=!ready||zoom<=.8;ui.quickIn.disabled=!ready||zoom>=2;
   ui.fitWidth.setAttribute("aria-pressed",String(fit==="width"));
   ui.fitPage.setAttribute("aria-pressed",String(fit==="page"));
+  ui.quickWidth.setAttribute("aria-pressed",String(fit==="width"));
+  ui.quickPage.setAttribute("aria-pressed",String(fit==="page"));
   ui.zoomOut.disabled=!ready||zoom<=.8;
   ui.zoomIn.disabled=!ready||zoom>=2;
   ui.zoomLabel.textContent=zoom===1?(fit==="width"?"พอดีกว้าง":"ทั้งหน้า"):Math.round(zoom*100)+"%";
@@ -155,7 +161,7 @@ async function openBytes(buffer,ticket,source){
   if(ticket!==loadingId||!dialog.open)return;
   const doc=await pdfjs.getDocument({data:bytes}).promise;
   if(ticket!==loadingId||!dialog.open){await doc.destroy();return;}
-  pdf=doc;page=1;zoom=1;fit="width";
+  pdf=doc;page=1;zoom=1;fit=preferredFit;
   ui.source.textContent=source;
   updateToolbar();await render();
 }
@@ -226,10 +232,15 @@ ui.canvasHost.addEventListener("keydown",event=>{
     event.preventDefault();setPage(pdf.numPages);
   }
 });
-ui.fitWidth.addEventListener("click",()=>{fit="width";zoom=1;updateToolbar();render().catch(()=>{});});
-ui.fitPage.addEventListener("click",()=>{fit="page";zoom=1;updateToolbar();render().catch(()=>{});});
+function chooseFit(value){if(!pdf)return;preferredFit=fit=value;zoom=1;updateToolbar();render().catch(()=>{});}
+ui.fitWidth.addEventListener("click",()=>chooseFit("width"));
+ui.fitPage.addEventListener("click",()=>chooseFit("page"));
+ui.quickWidth.addEventListener("click",()=>chooseFit("width"));
+ui.quickPage.addEventListener("click",()=>chooseFit("page"));
 ui.zoomIn.addEventListener("click",()=>setZoom(zoom+.2));
 ui.zoomOut.addEventListener("click",()=>setZoom(zoom-.2));
+ui.quickIn.addEventListener("click",()=>setZoom(zoom+.2));
+ui.quickOut.addEventListener("click",()=>setZoom(zoom-.2));
 const touchPoint=t=>({x:t.clientX,y:t.clientY});
 const distance=touches=>Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
 ui.canvasHost.addEventListener("touchstart",ev=>{
