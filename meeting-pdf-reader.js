@@ -20,14 +20,21 @@ const ui={
   fitWidth:$("readerFitWidth"),fitPage:$("readerFitPage"),
   zoomOut:$("readerZoomOut"),zoomIn:$("readerZoomIn"),zoomLabel:$("readerZoomLabel")
 };
-let lastFocus=null,current=null,pdf=null,pdfjs=null,loadingId=0,renderId=0,renderTask=null,zoom=1,fit="width",page=1,swipeStart=null,pinchStart=null,lastTap=null,resizeTimer=0;
+let lastFocus=null,current=null,pdf=null,pdfjs=null,loadingId=0,renderId=0,renderTask=null,zoom=1,fit="width",page=1,swipeStart=null,pinchStart=null,lastTap=null,resizeTimer=0,activeController=null;
 function message(value,error=false){ui.status.textContent=value||"";ui.status.hidden=!value;ui.status.classList.toggle("reader-error",error);}
-function showDrive(){
+function showDrive(reason=""){
+  if(current?.id)ui.frame.src="https://drive.google.com/file/d/"+encodeURIComponent(current.id)+"/preview";
   ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;
   ui.driveButton.hidden=true;ui.source.textContent="อ่านผ่าน Google Drive";
   ui.menu.open=false;
-  message("หาก Google Drive แจ้งว่าไม่มีสิทธิ์ ให้ขออนุญาตบัญชี Google ที่ใช้ ไม่ต้องส่งรหัสผ่าน");
+  message(reason||"ดู PDF ผ่าน Google Drive ตามสิทธิ์บัญชี Google ของคุณ");
   updateToolbar();
+}
+function showBook(source){
+  ui.frame.src="about:blank";
+  ui.drive.hidden=true;ui.localPane.hidden=false;ui.pageBar.hidden=false;
+  ui.driveButton.hidden=false;ui.source.textContent=source;
+  ui.menu.open=false;
 }
 async function clearPdf(){
   ++renderId;
@@ -39,32 +46,38 @@ async function clearPdf(){
 }
 function reset(){
   ++loadingId;
+  if(activeController){activeController.abort();activeController=null;}
   current=null;
   ui.frame.src="about:blank";
   ui.local.value="";
   clearPdf().catch(()=>{});
   ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;
   ui.source.textContent="";message("");
+  ui.canvas.style.transform="";ui.canvas.style.transformOrigin="";
   ui.menu.open=false;
   const focus=lastFocus;lastFocus=null;
   if(focus?.isConnected)focus.focus({preventScroll:true});
 }
-function open({driveFileId,title,documentType}={}){
+function open({driveFileId,title,documentType,loadPdf}={}){
   if(!/^[a-zA-Z0-9_-]{10,128}$/.test(driveFileId||""))return;
   if(dialog.open)dialog.close();
   // Never provide a public PDF copy or a token in the URL.
   lastFocus=document.activeElement;
-  current={id:driveFileId,title:String(title||"เอกสารประกอบ").slice(0,200)};
+  current={id:driveFileId,title:String(title||"เอกสารประกอบ").slice(0,200),loadPdf};
   ui.title.textContent=current.title;
   const typeLabel=documentType==="proposed_resolution"?"ร่างมติเสนอเพื่อพิจารณา":
     documentType==="agenda_draft"?"ร่างระเบียบวาระ":
     documentType==="minutes_draft"?"ร่างรายงานการประชุม":"เอกสารประกอบ";
   ui.notice.textContent=typeLabel+" • ฉบับร่าง ยังไม่ใช่มติหรือรายงานที่รับรองแล้ว";
   ui.open.href="https://drive.google.com/file/d/"+encodeURIComponent(driveFileId)+"/view";
-  ui.frame.src="https://drive.google.com/file/d/"+encodeURIComponent(driveFileId)+"/preview";
-  showDrive();
+  ui.frame.src="about:blank";
   dialog.showModal();
   ui.close.focus({preventScroll:true});
+  if(typeof loadPdf==="function"){
+    loadOnline().catch(()=>showDrive("เปิดแบบหนังสือไม่ได้ กรุณาอ่านผ่าน Google Drive"));
+  } else {
+    showDrive("ระบบอ่านแบบหนังสือยังไม่พร้อม กรุณาเปิดผ่าน Google Drive");
+  }
 }
 function updateToolbar(){
   const ready=!!pdf;
@@ -126,37 +139,65 @@ function setZoom(value){
   zoom=Math.max(.8,Math.min(2,Math.round(value*10)/10));
   updateToolbar();render().catch(()=>{});
 }
+async function openBytes(buffer,ticket,source){
+  if(ticket!==loadingId||!dialog.open)return;
+  const bytes=buffer instanceof Uint8Array?buffer:new Uint8Array(buffer);
+  if(bytes.byteLength>MAX_BYTES||bytes.byteLength<5)throw Error("file_size");
+  if(String.fromCharCode(...bytes.subarray(0,5))!=="%PDF-")throw Error("not_pdf");
+  if(!pdfjs){
+    pdfjs=await import(PDF_JS);
+    pdfjs.GlobalWorkerOptions.workerSrc=PDF_WORKER;
+  }
+  if(ticket!==loadingId||!dialog.open)return;
+  const doc=await pdfjs.getDocument({data:bytes}).promise;
+  if(ticket!==loadingId||!dialog.open){await doc.destroy();return;}
+  pdf=doc;page=1;zoom=1;fit="width";
+  ui.source.textContent=source;
+  updateToolbar();await render();
+}
+async function loadOnline(){
+  const source=current;
+  const ticket=++loadingId;
+  if(activeController)activeController.abort();
+  activeController=new AbortController();
+  const signal=activeController.signal;
+  await clearPdf();
+  if(ticket!==loadingId||!dialog.open)return;
+  showBook("อ่านแบบหนังสือจาก Google Drive");
+  message("กำลังเปิด PDF แบบหนังสือ…");
+  try{
+    const buffer=await source.loadPdf(signal);
+    if(ticket!==loadingId||!dialog.open)return;
+    await openBytes(buffer,ticket,"อ่านแบบหนังสือจาก Google Drive");
+  }catch(error){
+    if(ticket!==loadingId||!dialog.open)return;
+    await clearPdf();
+    if(ticket!==loadingId||!dialog.open)return;
+    showDrive("เปิดแบบหนังสือจาก Drive ไม่ได้ • แสดงตัวอ่าน Google Drive แทน (หากไฟล์จำกัดสิทธิ์ต้องใช้บัญชีที่ได้รับอนุญาต)");
+  }finally{
+    if(ticket===loadingId)activeController=null;
+  }
+}
 async function selectLocal(file){
   if(!file)return;
   const ticket=++loadingId;
+  if(activeController){activeController.abort();activeController=null;}
   await clearPdf();
   if(ticket!==loadingId||!dialog.open)return;
-  ui.drive.hidden=true;ui.localPane.hidden=false;ui.pageBar.hidden=false;
-  ui.driveButton.hidden=false;ui.source.textContent="อ่านแบบหนังสือ (ไฟล์ในเครื่อง — โปรดตรวจให้ตรงฉบับบน Drive)";
+  showBook("อ่านแบบหนังสือ (ไฟล์จากเครื่อง)");
   message("กำลังเตรียมอ่าน PDF…");
   try{
     if(file.size>MAX_BYTES||file.size<5)throw Error("file_size");
     const buffer=await file.arrayBuffer();
+    await openBytes(buffer,ticket,"อ่านแบบหนังสือ (ไฟล์จากเครื่อง — ตรวจให้ตรงฉบับบน Drive)");
+  }catch(error){
     if(ticket!==loadingId||!dialog.open)return;
-    const magic=new Uint8Array(buffer,0,Math.min(5,buffer.byteLength));
-    if(String.fromCharCode(...magic)!=="%PDF-")throw Error("not_pdf");
-    if(!pdfjs){
-      pdfjs=await import(PDF_JS);
-      pdfjs.GlobalWorkerOptions.workerSrc=PDF_WORKER;
-    }
-    if(ticket!==loadingId||!dialog.open)return;
-    const doc=await pdfjs.getDocument({data:new Uint8Array(buffer)}).promise;
-    if(ticket!==loadingId||!dialog.open){await doc.destroy();return;}
-    pdf=doc;page=1;zoom=1;fit="width";
-    updateToolbar();
-    await render();
-  }catch(err){
-    if(ticket!==loadingId)return;
-    message("เปิดไฟล์ในเครื่องไม่ได้ โปรดเลือก PDF ไม่เกิน 40 MB หรือใช้ตัวอ่าน Google Drive",true);
+    message("เปิดไฟล์ที่เลือกไม่ได้ โปรดใช้ไฟล์ PDF ไม่เกิน 40 MB หรือเปิดผ่าน Google Drive",true);
   }finally{ui.local.value="";}
 }
 async function backToDrive(){
   ++loadingId;
+  if(activeController){activeController.abort();activeController=null;}
   await clearPdf();
   if(!dialog.open)return;
   showDrive();
