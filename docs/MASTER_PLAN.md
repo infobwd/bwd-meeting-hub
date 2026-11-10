@@ -138,6 +138,6 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Add full per-task history dialog with 20-row pages, exact count, task_id filter and existing SELECT RLS; no write/approval routes are affected.
 - [x] Reduce account logout button line wrapping and simplify footer wording.
 - [x] Add isolated UI source tests, audit backend contract and test in CI.
-- [ ] After merge, apply migration 202611100006_meeting_cover.sql to Supabase Meeting, then verify schema and RPC access. Do not assume Pages deploy applies migrations.
+- [x] Applied migration 202611100006_meeting_cover.sql to Supabase Meeting on 2026-11-10 and verified one existing meeting, zero cover images selected, and only authenticated role granted RPC execution. This does not replace live multi-user authorization acceptance.
 - [ ] Choose an actual appropriate image in the permitted Google Drive; none is auto-selected from private school documents.
 - [ ] Live iOS/Android and separate-role acceptance, restricted Drive-photo test, storage quota and privacy approval before official go-live.
