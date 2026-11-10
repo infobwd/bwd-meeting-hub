@@ -174,6 +174,6 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Only reviewers may change task assignees. Disallow reassignment in `submitted`, `approved` or `cancelled` states, require a reason, and append an audit event + progress entry recording old/new assignee. Disable the legacy 3-argument owner RPC so it cannot evade the new required reason.
 - [x] Preserve independent task approval: the owner cannot approve their own submission, and approval/rejection is separate from owner withdrawal.
 - [x] Add UX-11 frontend and backend source regression tests. Preserve existing meeting, document, Drive and Free-tier workflows.
-- [ ] iPhone and Android manual UAT with different owner/editor credentials, since no teacher has been invited and cross-account QA is not available yet.
-- [ ] Confirm the school account's public display name is configured; the safe picker falls back to account email rather than displaying UUID.
+- [ ] iPhone and Android manual UAT with different owner/editor credentials, since no teacher has been invited and cross-account QA is not available yet. Backend UX-11 RPC migration deployed, version/anonymous-access gates verified without changing any task status.
+- [x] The school administrator account now has its full display name set in the private Supabase profile (only if previously blank); the picker falls back to email when a future user has not configured a name.
 - **Safety:** no user invitations, Auth account creation, task status mutations or historical-row deletions are part of this release.
