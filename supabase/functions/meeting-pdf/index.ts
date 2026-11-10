@@ -25,16 +25,12 @@ function problem(status: number, message: string, origin: string | null) {
   h.set("Content-Type", "application/json; charset=utf-8");
   return new Response(JSON.stringify({error:message}), {status,headers:h});
 }
-async function readDrivePdf(fileId: string): Promise<Uint8Array> {
-  if (!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)) throw new Error("invalid_drive_file_id");
-  let url = new URL("https://drive.google.com/uc");
-  url.searchParams.set("export", "download");
-  url.searchParams.set("id", fileId);
+async function readDriveEndpoint(url: URL): Promise<Uint8Array> {
   for (let hop = 0; hop <= REDIRECT_LIMIT; hop++) {
     if (url.protocol !== "https:" || !ALLOWED_DRIVE_HOST.test(url.hostname)) throw new Error("disallowed_redirect");
     const response = await fetch(url, {
       redirect: "manual",
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(14000),
       headers: {Accept: "application/pdf,application/octet-stream;q=0.8"},
     });
     if ([301,302,303,307,308].includes(response.status)) {
@@ -73,6 +69,19 @@ async function readDrivePdf(fileId: string): Promise<Uint8Array> {
     return data;
   }
   throw new Error("redirect_failure");
+}
+async function readDrivePdf(fileId: string): Promise<Uint8Array> {
+  if (!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)) throw new Error("invalid_drive_file_id");
+  const candidates = [
+    "https://drive.usercontent.google.com/download?id="+encodeURIComponent(fileId)+"&export=download&confirm=t",
+    "https://drive.google.com/uc?export=download&id="+encodeURIComponent(fileId),
+  ];
+  let error: unknown = null;
+  for (const candidate of candidates) {
+    try { return await readDriveEndpoint(new URL(candidate)); }
+    catch (err) { error = err; if (err instanceof Error && err.message === "document_too_large") throw err; }
+  }
+  throw error || new Error("drive_unavailable");
 }
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get("origin");
