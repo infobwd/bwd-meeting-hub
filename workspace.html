@@ -97,7 +97,11 @@
         <section id="doc02PreviewPane" class="doc02-preview-pane" aria-label="ตัวอย่างเอกสารขนาด A4">
           <div class="doc02-preview-head"><h3>ตัวอย่างหน้ากระดาษ A4</h3>
             <span class="mini">แสดงสำหรับอ่านตรวจ · ไม่ใช่ฉบับรับรอง</span></div>
-          <div id="doc02Preview" class="doc02-preview-scroll" aria-live="polite"></div>
+          <div id="doc02ZoomControls" class="doc02-zoom-controls" role="group" aria-label="ขยายตัวอย่างหน้าเอกสาร">
+            <button type="button" class="doc02-zoom-btn" data-doc02-zoom="fit" aria-pressed="true">พอดีหน้าจอ</button>
+            <button type="button" class="doc02-zoom-btn" data-doc02-zoom="large" aria-pressed="false">ขยายอ่าน</button>
+          </div>
+          <div id="doc02Preview" class="doc02-preview-scroll" data-zoom="fit" aria-live="polite"></div>
         </section>
       </div>
     </div>
