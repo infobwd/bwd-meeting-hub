@@ -328,19 +328,19 @@ async function reload(){
  state.loading=true;state.loadError="";
  render();
  try{
-  const client=state.client;
+  const c=state.client;
   const queries=[
-   client.from("meetings").select("*").order("created_at",{ascending:false}),
-   client.from("meeting_access").select("*"),
-   client.from("agendas").select("*").order("section").order("position"),
-   client.from("decisions").select("*"),
-   client.from("minutes").select("*"),
-   client.from("tasks").select("*").order("updated_at",{ascending:false}),
-   client.from("task_meeting_links").select("*"),
-   client.from("profiles").select("id,display_name"),
-   client.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
-   client.from("task_evidence").select("*").order("created_at",{ascending:false}),
-   client.from("meeting_documents").select("*").order("added_at",{ascending:false})
+   c.from("meetings").select("*").order("created_at",{ascending:false}),
+   c.from("meeting_access").select("*"),
+   c.from("agendas").select("*").order("section").order("position"),
+   c.from("decisions").select("*"),
+   c.from("minutes").select("*"),
+   c.from("tasks").select("*").order("updated_at",{ascending:false}),
+   c.from("task_meeting_links").select("*"),
+   c.from("profiles").select("id,display_name"),
+   c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
+   c.from("task_evidence").select("*").order("created_at",{ascending:false}),
+   c.from("meeting_documents").select("*").order("added_at",{ascending:false})
   ];
   const results=await Promise.all(queries);
   const error=results.find(x=>x.error)?.error;
@@ -383,7 +383,7 @@ async function bootstrap(){
  }catch(err){
   state.user=null;state.member=null;clearPrivateView();
   setVisible("workspace",false);setVisible("blocked",false);setVisible("loginSection",true);
-  $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+(err.message||"เกิดข้อผิดพลาด");
+  $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+friendlyError(err);
  }
 }
 function meetingCard(m){
@@ -611,7 +611,7 @@ async function uploadEvidence(file,taskId,input){
   await rpc("r2_register_evidence",{p_task_id:taskId,p_object_path:path,p_original_name:file.name.slice(0,200)});
   const refreshed=await reload();
   statusMessage(refreshed?"แนบหลักฐานในพื้นที่ส่วนตัวแล้ว":"แนบหลักฐานสำเร็จแล้ว แต่ยังโหลดรายการล่าสุดไม่ได้ กรุณาลองโหลดข้อมูลอีกครั้ง",!refreshed);
- }catch(e){statusMessage("แนบหลักฐานไม่สำเร็จ: "+(e.message||"ลองใหม่"),true);}
+ }catch(e){statusMessage("แนบหลักฐานไม่สำเร็จ: "+friendlyError(e),true);}
  finally{input.disabled=false;input.value="";}
 }
 function fileKind(path){
