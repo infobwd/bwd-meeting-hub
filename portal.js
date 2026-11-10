@@ -14,7 +14,7 @@ const sections={"1":"ประธานแจ้งให้ทราบ","2":"�
 const state={
   client:null,user:null,member:null,profile:null,meetings:[],access:[],agendas:[],decisions:[],
   minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],
-  page:"overview",activeMeeting:null,taskFilter:"all",agendaOpen:{},loading:false
+  page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},loading:false
 };
 const modal=$("modal"), actionForm=$("actionForm");
 let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus;
@@ -414,7 +414,7 @@ function renderMeeting(m){
   '</div><div id="bwd-tasks" class="meeting-target">'+section("งานที่เชื่อมกับการประชุม",linked.length?'<div class="cards">'+linked.map(l=>state.tasks.find(t=>t.id===l.task_id)).filter(Boolean).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีภารกิจที่เชื่อมกับการประชุม"),
     editable?button("＋ เพิ่มงาน","newTask",{"meeting-id":m.id},"primary"):"")+
   '</div><div id="bwd-participants" class="meeting-target">'+section("ผู้มีสิทธิ์เข้าถึง",attendees.length?attendees.map(a=>'<div class="item">'+esc(fullName(a.user_id))+' <span class="status">'+esc(a.role==="editor"?"ผู้จัดการ":a.role==="guest"?"ผู้เข้าร่วมภายนอก":"ผู้เข้าประชุม")+'</span></div>').join(""):empty("ไม่มีผู้เข้าร่วมในรายชื่อ"),
-    editable?button("เพิ่มผู้เข้าร่วม","addAccess",{"meeting-id":m.id}):"")+'</div>';
+    editable?button("เพิ่มผู้เข้าร่วม","addAccess",{"meeting-id":m.id}):"")+'</div></div>';
 }
 
 function renderTasks(){
@@ -586,8 +586,8 @@ async function actionClick(ev){
  switch(act){
   case "goMeetings":setPage("meetings");break;
   case "goTasks":setPage("tasks");break;
-  case "openMeeting":state.page="meetings";state.activeMeeting=mid;render();window.scrollTo(0,0);break;
-  case "backMeetings":state.activeMeeting=null;render();break;
+  case "openMeeting":state.meetingListScroll=window.scrollY;state.page="meetings";state.activeMeeting=mid;render();window.scrollTo(0,0);break;
+  case "backMeetings":state.activeMeeting=null;render();window.scrollTo(0,state.meetingListScroll||0);break;
   case "expandAgendas":
   case "collapseAgendas":{
     if(state.activeMeeting!==mid)return;
