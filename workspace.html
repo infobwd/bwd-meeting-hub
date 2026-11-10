@@ -63,6 +63,19 @@
       <div class="modal-actions"><button class="button subtle" type="button" id="cancelModal">ยกเลิก</button><button class="button primary" type="submit" id="submitModal">บันทึก</button></div>
     </form>
   </dialog>
+  <dialog id="evidencePreview" class="evidence-preview" aria-labelledby="evidencePreviewTitle">
+    <div class="preview-shell">
+      <div class="preview-header">
+        <h2 id="evidencePreviewTitle">ตัวอย่างไฟล์หลักฐาน</h2>
+        <button class="button subtle" type="button" id="closeEvidencePreview" aria-label="ปิดตัวอย่าง">✕</button>
+      </div>
+      <div id="evidencePreviewBody" class="preview-body" aria-live="polite"></div>
+      <div class="preview-actions">
+        <button class="button primary" type="button" id="previewDownload" disabled>ดาวน์โหลดไฟล์</button>
+        <button class="button subtle" type="button" id="previewCloseFooter">ปิด</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
     <form method="dialog">
       <h2 id="confirmTitle">ยืนยันการดำเนินการ</h2>
