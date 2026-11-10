@@ -78,6 +78,19 @@ function thaiDate(value){
  const d=new Date(String(value)+"T12:00:00");
  return Number.isNaN(d.getTime())?"ยังไม่กำหนดวัน":new Intl.DateTimeFormat("th-TH",{dateStyle:"long"}).format(d);
 }
+function previewMeetingTitle(meeting){
+ const title=String(meeting.title||"การประชุม").trim();
+ const date=thaiDate(meeting.scheduled_on);
+ // Hide a duplicate trailing date only if it exactly matches the meeting date.
+ // Never edit the saved meeting title or remove an unverified date.
+ if(date!=="ยังไม่กำหนดวัน"){
+  for(const suffix of [" — "+date," – "+date," - "+date," ("+date+")"]){
+   if(title.endsWith(suffix))return title.slice(0,-suffix.length).trim();
+  }
+ }
+ return title;
+}
+
 function textField(label,key,value,wide=false){
  return '<label class="doc02-field">'+escapeHtml(label)+
  (wide?'<textarea data-doc02-header="'+escapeHtml(key)+'" rows="3" maxlength="8000">':
@@ -168,11 +181,12 @@ function previewMarkup(type,fields){
  const allSections=[...new Set(items.map(a=>Number(a.section)))];
  const renderHeader=pageIndex=>{
   if(pageIndex>0)return '<h2>'+escapeHtml(heading)+' (ต่อ)</h2>'+
-   '<p class="doc02-paper-center doc02-paper-continuation">'+escapeHtml(m.title||"การประชุม")+
-   ' · ครั้งที่ '+line(h.meeting_no,"กรุณาตรวจสอบครั้งที่")+'</p>';
+   '<p class="doc02-paper-center doc02-paper-continuation">'+escapeHtml(previewMeetingTitle(m))+
+   ' · '+(String(h.meeting_no||"").trim()?'ครั้งที่ '+line(h.meeting_no):'ยังไม่ระบุครั้งที่')+'</p>';
   let head='<h2>'+escapeHtml(heading)+'</h2>'+
-   '<p class="doc02-paper-center"><strong>'+escapeHtml(m.title||"การประชุม")+'</strong></p>'+
-   '<p class="doc02-paper-center">โรงเรียนบ้านวังด้ง · ครั้งที่ '+line(h.meeting_no,"กรุณาระบุครั้งที่")+'</p>'+
+   '<p class="doc02-paper-center"><strong>'+escapeHtml(previewMeetingTitle(m))+'</strong></p>'+
+   '<p class="doc02-paper-center">โรงเรียนบ้านวังด้ง · '+
+   (String(h.meeting_no||"").trim()?'ครั้งที่ '+line(h.meeting_no):'ยังไม่ระบุครั้งที่ (กรอกในข้อมูลหัวเอกสาร)')+'</p>'+
    '<p class="doc02-paper-center">วันที่ '+escapeHtml(thaiDate(m.scheduled_on))+
    ' · '+line(h.venue||m.location)+'</p>'+
    '<p class="doc02-paper-meta">สถานะเอกสาร DOC-02: '+escapeHtml(status)+' • '+escapeHtml(ver)+
@@ -406,7 +420,7 @@ function init(){
 global.BWDDoc02={
  init,open,closePrivate,
  // Pure formatters exported for deterministic regression tests (no live calls).
- sourceFields,previewMarkup,previewPages,escapeHtml,titleForSection,cleanItemTitle,
+ sourceFields,previewMarkup,previewPages,escapeHtml,titleForSection,cleanItemTitle,previewMeetingTitle,
  setTemplateForTest(key){templateKey=key;},
  setContextForTest(value){context=value;documents={agenda:null,minutes:null};activeType="agenda";}
 };
