@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.1.0 | 2026-11-10 | Status: implementation started (R1 prototype)
+Version: 0.2.0 | 2026-11-10 | Status: R2 code implemented; Supabase provisioning and multi-role acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -58,11 +58,19 @@ Static frontend (GitHub Pages) + Supabase Auth/Postgres + Row Level Security, se
 - [ ] Production authentication and authorization (must NOT be assumed complete)
 
 ### R2 — Secure collaboration and task tracking
-- [ ] Real identity and role matrix; invite external attendees; meeting-specific ACL and row-level tests
-- [ ] Persistent backend schema / migration / backups / audit trail
-- [ ] Minutes approval, task acceptance/rejection, evidence attachments
-- [ ] Single-task continuity across meetings; race-safe editing
-- [ ] Export approved minutes to Google Docs or PDF
+- [x] Code: login portal with existing Supabase Auth users (workspace.html + portal.js) — **requires project configuration**
+- [x] Code: role matrix, per-meeting ACL, default-deny RLS and no direct client table writes (migrations 001–002)
+- [x] Code: normalized DB schema and audited RPC operations (migration 003); backups/retention are **not configured**
+- [x] Code: draft minutes → submission → admin review/rejection; decisions remain distinct from formal committee ratification
+- [x] Code: assigned tasks → progress → submission → independent review, version checks, updates and evidence metadata
+- [x] Code: private bucket and task-scoped evidence upload policies (migration 004)
+- [x] Code: one task linked to more than one meeting without duplication
+- [x] Code: browser print/save-as-PDF for reviewed minutes — Google Docs export not connected
+- [x] Source-contract and JS syntax checks in GitHub Actions
+- [ ] Create/configure private Supabase project, apply migrations and provision authorized accounts
+- [ ] Live RLS tests with multiple roles, invite/revoke tests, mobile UAT, backup/restore test
+- [ ] Approved external invite journey, expiry/revocation, privacy and retention sign-off
+- [ ] Integrate real Google Docs export if required; formal committee ratification procedure
 
 ### R3 — Notifications and smart workflows
 - [ ] Real opt-in delivery with recipient/channel controls and duplicate prevention
@@ -80,3 +88,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 2. Design database schema/ACL contract and R2 threat model before connecting accounts.
 3. Provision backend with admin-approved identities and private storage.
 4. Run role-based acceptance and audit tests, then enable real notifications only after recipient consent.
+
+## 10. R2 implementation status / release gate (2026-11-10)
+- R2 code is stored under workspace.html, portal.js, portal.css, config.public.js, and supabase/migrations.
+- R1 remains available as non-sensitive browser-only demo; it does not sync to R2.
+- **NO PRODUCTION GO-LIVE** before private Supabase provisioning, multi-account RLS acceptance and privacy sign-off. The repo being public is not evidence that data are public.
+- R2 does not schedule or send reminders. R3 notification workflow remains separate.
+- Operational setup guide: docs/R2_SETUP.md.

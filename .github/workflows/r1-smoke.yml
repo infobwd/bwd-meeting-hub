@@ -1,4 +1,4 @@
-name: R1 smoke checks
+name: BWD smoke and security checks
 on:
   push:
     branches: [main, "feat/**"]
@@ -15,6 +15,8 @@ jobs:
         with:
           node-version: "22"
       - name: Check JavaScript syntax
-        run: node --check app.js
-      - name: Run lightweight source contract tests
-        run: node --test tests/source-contract.test.mjs
+        run: |
+          node --check app.js
+          node --check portal.js
+      - name: Check R1 and R2 source contracts
+        run: node --test tests/*.test.mjs
