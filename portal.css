@@ -212,3 +212,85 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
 }
 @media(max-width:380px){.meeting-reader .reader-pagebar{gap:4px}.meeting-reader .reader-pagebar button{min-width:58px;font-size:12px}}
 @media print{dialog.meeting-reader{display:none!important}}
+
+/* UX-01 — BWD/TDRS-informed application shell.
+ * Additive, scoped overrides: no meeting, review, storage or PDF behavior changes.
+ * BWD navy/gold identity and the original three-nav destinations stay intact.
+ */
+:root {
+  --bwd-navy: #102e56;
+  --bwd-blue: #154175;
+  --bwd-gold: #efc64a;
+  --bwd-bg: #f4f7fb;
+  --bwd-surface: #ffffff;
+  --bwd-text: #1c2c46;
+  --bwd-muted: #576c85;
+  --bwd-border: #dce5f0;
+  --bwd-radius: 16px;
+  --bwd-focus: 3px solid var(--bwd-gold);
+}
+.top { background: var(--bwd-navy); }
+.top .mark { min-width:0; }
+.top .mark > span:last-child { min-width:0; }
+.top .mark strong { line-height:1.2; }
+.account { min-width:0; }
+.account #accountName { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.workspace-title-group { min-width:0; flex:1 1 230px; }
+.workspace-title-group h1 { overflow-wrap:anywhere; text-wrap:balance; }
+.workspace-head { align-items:center; }
+.workspace-head .role-pill { max-width:100%; overflow-wrap:anywhere; white-space:normal; }
+.tabs { gap:8px; }
+.tabs .tab { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:44px; font-weight:500; transition:background-color .15s ease,color .15s ease; }
+.tabs .tab.current { background:var(--bwd-blue); color:#fff; }
+.tabs .tab:focus-visible { outline:var(--bwd-focus); outline-offset:2px; }
+.tab-icon { display:none; }
+.panel,.card,.metric { min-width:0; }
+.panel h2,.card h3,.item h3 { overflow-wrap:anywhere; }
+.cards > .card { min-width:0; }
+.actions { min-width:0; }
+.button { max-width:100%; text-align:center; }
+#portalBody { min-width:0; }
+@media (max-width:900px) {
+  .top { padding-inline:clamp(10px,3vw,18px); }
+  .top .mark strong { font-size:clamp(13px,3.6vw,16px); }
+  .top .logo { flex:0 0 36px; width:36px; height:36px; }
+  .top .account { flex:0 1 auto; }
+  #accountName { max-width:clamp(58px,18vw,130px); }
+  #logout { min-width:44px; min-height:44px; }
+  #screen { padding-top:clamp(14px,3vw,22px); }
+  .workspace-head { align-items:center; gap:8px; margin-bottom:12px; }
+  .workspace-head .eyebrow { display:none; }
+  .workspace-title-group { flex:1 1 60%; }
+  .workspace-title-group h1 { font-size:clamp(21px,4.8vw,26px); line-height:1.25; margin:0; }
+  .workspace-head .hint { font-size:11px; margin:4px 0 0; line-height:1.5; }
+  .workspace-head .role-pill { flex:0 1 auto; max-width:42%; font-size:11px; text-align:center; }
+  .tabs { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .tabs .tab { min-width:0; width:100%; min-height:58px; gap:4px; padding:6px 2px; border-radius:13px; color:var(--bwd-muted); font-size:12px; line-height:1.2; }
+  .tabs .tab.current { color:var(--bwd-navy); background:#e7f0fb; }
+  .tabs .tab.current .tab-icon { color:#174f8e; }
+  .tabs .tab-icon { width:23px; height:23px; min-width:23px; flex:0 0 23px; display:block; }
+  .tabs .tab-label { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #screen { padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
+  .card,.panel,.metric { border-color:var(--bwd-border); }
+  .card { gap:9px; }
+  .card p { font-size:13px; line-height:1.55; }
+  .card h3 { font-size:16px; line-height:1.4; }
+  .button.small { min-height:44px; }
+  .role-pill,.status { line-height:1.35; }
+  .center-card input:not([type=checkbox]),.field input:not([type=checkbox]),.field textarea,.field select,.filter { font-size:16px; }
+}
+@media (max-width:380px) {
+  .top .mark { gap:7px; }
+  .top .mark strong { font-size:13px; }
+  #accountName { max-width:66px; }
+  .workspace-head .role-pill { max-width:45%; padding:5px 8px; }
+  .tabs { padding-inline:8px; }
+  .tabs .tab { font-size:11.5px; }
+}
+@media (min-width:901px) {
+  .workspace-head { padding-block:2px 6px; }
+  .tabs .tab { padding:10px 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabs .tab { transition:none; }
+}

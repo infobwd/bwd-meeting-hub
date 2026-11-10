@@ -368,6 +368,9 @@ function renderTasks(){
   (filtered.length?'<div class="cards">'+filtered.map(t=>taskCard(t,true)).join("")+'</div>':empty("ไม่พบงานในหมวดนี้"));
 }
 function render(){
+ const pageTitle=state.page==="overview"?"ภาพรวม":state.page==="meetings"?(state.activeMeeting?"รายละเอียดการประชุม":"การประชุม"):"ภารกิจ";
+ const title=$("workspaceTitle");
+ if(title&&title.textContent!==pageTitle)title.textContent=pageTitle;
  document.querySelectorAll("[data-page]").forEach(n=>{n.classList.toggle("current",n.dataset.page===state.page);if(n.dataset.page===state.page)n.setAttribute("aria-current","page");else n.removeAttribute("aria-current");});
  $("portalBody").innerHTML=state.page==="overview"?renderOverview():state.page==="meetings"?renderMeetings():renderTasks();
 }
