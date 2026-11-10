@@ -549,7 +549,26 @@ async function actionClick(ev){
     const d=state.documents.find(x=>x.id===b.dataset.documentId && state.meetings.some(m=>m.id===x.meeting_id));
     if(!d)return statusMessage("ไม่พบเอกสารที่คุณมีสิทธิ์เปิดอ่าน",true);
     if(!window.BWDMeetingPdfReader)return statusMessage("ตัวอ่าน PDF ยังโหลดไม่สำเร็จ โปรดลองรีเฟรชเว็บ",true);
-    window.BWDMeetingPdfReader.open({driveFileId:d.drive_file_id,title:d.title,documentType:d.document_type});
+    window.BWDMeetingPdfReader.open({
+      driveFileId:d.drive_file_id,title:d.title,documentType:d.document_type,
+      loadPdf:async(signal)=>{
+        const {data,error}=await state.client.auth.getSession();
+        const token=data?.session?.access_token;
+        if(error||!token)throw Error("Authentication required");
+        const endpoint=(cfg.url.endsWith("/")?cfg.url.slice(0,-1):cfg.url)+"/functions/v1/meeting-pdf?document_id="+encodeURIComponent(d.id);
+        const resp=await fetch(endpoint,{
+          method:"GET",
+          headers:{Authorization:"Bearer "+token,apikey:cfg.publishableKey,Accept:"application/pdf"},
+          cache:"no-store",signal
+        });
+        if(!resp.ok)throw Error("PDF reader unavailable");
+        const size=Number(resp.headers.get("content-length")||0);
+        if(size>40*1024*1024)throw Error("PDF too large");
+        const bytes=await resp.arrayBuffer();
+        if(bytes.byteLength>40*1024*1024)throw Error("PDF too large");
+        return bytes;
+      }
+    });
     break;
   }
   case "printMinutes":printMinutes(mid);break;
