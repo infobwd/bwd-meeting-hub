@@ -100,6 +100,18 @@ test("EXT-02: meeting mode is visible and filter retains legacy meeting without 
  assert.match(meetingCard(fakeExternal),/หน่วยงานสมมติ/);
 });
 
+test("EXT-02: external Drive references do not masquerade as draft school minutes",()=>{
+ seed();
+ state.documents=[{id:"document-1",meeting_id:fakeExternal.id,
+  drive_file_id:"testOnlyDriveDocument_1234567890",title:"หนังสือเชิญตัวอย่าง",
+  document_type:"other"}];
+ const rendered=renderMeeting(fakeExternal);
+ assert.match(rendered,/หนังสือเชิญตัวอย่าง/);
+ assert.match(rendered,/เอกสารอ้างอิงที่ผู้เข้าร่วมแนบ/);
+ assert.match(rendered,/data-action="readMeetingPdf"/);
+ assert.doesNotMatch(rendered,/ฉบับร่าง — ยังไม่รับรอง/);
+});
+
 test("EXT-02: UI wires audited RPCs without using private preinvite directory",()=>{
  for(const name of ["r2_ext_create_meeting","r2_ext_add_participant","r2_ext_save_report",
   "r2_ext_submit_report","r2_ext_withdraw_report","r2_ext_review_report",
