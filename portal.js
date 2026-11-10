@@ -562,6 +562,72 @@ function renderMeeting(m){
     editable?button("เพิ่มผู้เข้าร่วม","addAccess",{"meeting-id":m.id}):"")+'</div></div>';
 }
 
+
+function historyEntryMarkup(item){
+ const label=statuses[item.new_status]||item.new_status||"บันทึกเพิ่มเติม";
+ return '<article class="task-history-entry"><span class="task-history-dot" aria-hidden="true"></span>'+
+   '<div><p class="task-history-heading">'+esc(label)+'</p>'+
+   '<p class="task-history-meta">'+esc(formatHistoryDate(item.created_at))+' · '+esc(fullName(item.author_id))+'</p>'+
+   (item.note?'<p class="task-history-note">'+esc(item.note)+'</p>':"")+'</div></article>';
+}
+function closeTaskHistory(){
+ const dialog=$("taskHistoryDialog");
+ if(dialog.open)dialog.close();
+}
+async function openTaskHistory(taskId){
+ const task=state.tasks.find(t=>t.id===taskId);
+ if(!task)return statusMessage("ไม่พบภารกิจที่คุณมีสิทธิ์ดู",true);
+ const dialog=$("taskHistoryDialog");
+ if(dialog.open)dialog.close();
+ historyTaskId=task.id;historyOffset=0;historyTotal=null;historySeen.clear();
+ ++historyRequest;historyReturnFocus=document.activeElement;
+ $("taskHistoryTaskName").textContent=task.title;
+ $("taskHistoryBody").replaceChildren();
+ $("taskHistoryCount").textContent="";
+ $("taskHistoryMore").hidden=true;
+ dialog.showModal();
+ $("taskHistoryClose").focus({preventScroll:true});
+ await loadMoreTaskHistory();
+}
+async function loadMoreTaskHistory(){
+ if(historyLoading||!historyTaskId||!$("taskHistoryDialog").open)return;
+ historyLoading=true;
+ const ticket=historyRequest,taskId=historyTaskId;
+ const more=$("taskHistoryMore");
+ more.disabled=true;more.hidden=false;more.textContent="กำลังโหลด…";
+ try{
+  // The existing SELECT RLS policy restricts updates to tasks visible to this user.
+  const {data,error,count}=await state.client.from("task_updates")
+    .select("id,task_id,author_id,new_status,note,created_at",{count:"exact"})
+    .eq("task_id",taskId).order("created_at",{ascending:false}).order("id",{ascending:false})
+    .range(historyOffset,historyOffset+HISTORY_PAGE_SIZE-1);
+  if(error)throw error;
+  if(ticket!==historyRequest||!$("taskHistoryDialog").open||taskId!==historyTaskId)return;
+  const rows=data||[];
+  for(const item of rows){
+   if(historySeen.has(item.id))continue;
+   historySeen.add(item.id);
+   const holder=document.createElement("div");
+   holder.innerHTML=historyEntryMarkup(item);
+   $("taskHistoryBody").append(...holder.childNodes);
+  }
+  historyOffset+=rows.length;
+  if(Number.isFinite(count))historyTotal=count;
+  $("taskHistoryCount").textContent=historyTotal===null?
+    "แสดง "+historySeen.size+" บันทึก":"แสดง "+historySeen.size+" จาก "+historyTotal+" บันทึก";
+  if(historySeen.size===0)$("taskHistoryBody").innerHTML='<p class="empty">ยังไม่มีประวัติที่บันทึกไว้</p>';
+  more.hidden=rows.length<HISTORY_PAGE_SIZE||(historyTotal!==null&&historyOffset>=historyTotal);
+  more.textContent="โหลดเพิ่มเติม 20 รายการ";
+ }catch(error){
+  if(ticket===historyRequest&&$("taskHistoryDialog").open){
+   $("taskHistoryCount").textContent=friendlyError(error);
+   more.hidden=false;more.textContent="ลองโหลดอีกครั้ง";
+  }
+ }finally{
+  if(ticket===historyRequest){historyLoading=false;more.disabled=false;}
+ }
+}
+
 function renderTasks(){
  const filtered=state.tasks.filter(t=>state.taskFilter==="all"||state.taskFilter==="mine"&&isOwner(t)||state.taskFilter==="review"&&t.status==="submitted"&&canReview(t.id));
  return '<div class="flex-between task-list-head"><h2>ภารกิจที่เกี่ยวข้อง</h2>'+
@@ -858,6 +924,14 @@ function main(){
   if(entry)downloadBlob(previewFile.blob,entry.original_name||"evidence");
  });
  $("workspace").addEventListener("click",actionClick);
+ const taskHistoryDialog=$("taskHistoryDialog");
+ $("taskHistoryClose").addEventListener("click",closeTaskHistory);
+ $("taskHistoryMore").addEventListener("click",()=>loadMoreTaskHistory());
+ taskHistoryDialog.addEventListener("close",()=>{
+   ++historyRequest;historyTaskId=null;historyLoading=false;
+   if(historyReturnFocus?.isConnected)historyReturnFocus.focus({preventScroll:true});
+   historyReturnFocus=null;
+ });
  $("workspace").addEventListener("error",event=>{
    const image=event.target;
    if(image?.matches?.(".meeting-cover img"))image.hidden=true;
