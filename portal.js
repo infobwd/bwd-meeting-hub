@@ -313,11 +313,11 @@ function chooseGalleryCover(fileId){
  if(!card)return;
  field.value="https://drive.google.com/file/d/"+encodeURIComponent(fileId)+"/view";
  updateCoverPreview();
- const confirmed=$("f_coverConfirmed");if(confirmed)confirmed.checked=true;
+ const confirmed=$("f_coverConfirmed");if(confirmed)confirmed.checked=false;
  $("coverGalleryItems").querySelectorAll("[data-cover-select]").forEach(item=>
    item.setAttribute("aria-pressed",String(item===card)));
  const feedback=$("coverGalleryStatus");
- if(feedback)feedback.textContent="เลือก "+(card.querySelector(".cover-gallery-name")?.textContent||"ภาพนี้")+" แล้ว กดบันทึกเพื่อใช้เป็นภาพปก";
+ if(feedback)feedback.textContent="เลือก "+(card.querySelector(".cover-gallery-name")?.textContent||"ภาพนี้")+" แล้ว กรุณายืนยันว่าได้ตรวจสิทธิ์การเข้าถึงและกดบันทึก";
 }
 async function updatePhotoFolder(){
  const mid=editCtx.meetingId,m=meeting(mid);
