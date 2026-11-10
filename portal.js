@@ -60,6 +60,19 @@ function renderAgendaGroup(m,number,items,first,editable){
 function statusLabel(s){const tone=s==="approved"?"green":s==="blocked"?"red":s==="submitted"?"purple":s==="doing"?"gold":"";return '<span class="status '+tone+'">'+esc(statuses[s]||s)+'</span>';}
 function formatDate(v){if(!v)return "ยังไม่กำหนดวัน";const d=new Date(v+"T12:00:00");return Number.isNaN(d.getTime())?"ยังไม่กำหนดวัน":new Intl.DateTimeFormat("th-TH",{year:"numeric",month:"short",day:"numeric"}).format(d);}
 function fullName(id){const p=state.profiles.find(p=>p.id===id);return p?.display_name|| (id===state.user?.id?"บัญชีของฉัน":"บัญชีผู้ใช้");}
+function displayMeetingTitle(m){return String(m?.title||"").replace(/\s*\(ร่างรายงาน\)\s*$/u,"");}
+function statusHelp(status){
+ const help={
+  doing:"สรุปสิ่งที่ดำเนินการแล้ว และขั้นตอนถัดไป",
+  blocked:"ระบุปัญหาที่พบ สิ่งที่ยังรอ และความช่วยเหลือที่ต้องการ",
+  submitted:"สรุปผลงานที่ส่งให้ตรวจ และระบุหลักฐานที่ผู้ตรวจควรพิจารณา"
+ };
+ return help[status]||"อธิบายความคืบหน้าของงาน";
+}
+function updateTaskStatusHelp(status){
+ const node=$("taskStatusHelp");
+ if(node)node.textContent=statusHelp(status);
+}
 function meeting(id){return state.meetings.find(m=>m.id===id);}
 function agenda(id){return state.agendas.find(a=>a.id===id);}
 function minute(meetingId){return state.minutes.find(m=>m.meeting_id===meetingId);}
@@ -272,8 +285,9 @@ function openModal(mode,ctx={}){
  }else if(mode==="taskState"&&t){
   label="อัปเดตภารกิจ";
   body='<p class="muted">'+esc(t.title)+'</p>'+
-    field("สถานะ","status",select("status",["doing","blocked","submitted"].map(k=>'<option value="'+k+'">'+esc(statuses[k])+'</option>').join("")))+
-    field("ความคืบหน้าหรือผลการดำเนินงาน *","note",textarea("note","",true));
+    field("สถานะ","status",select("status",["doing","blocked","submitted"].map(k=>'<option value="'+k+'" '+(t.status===k?'selected':'')+'>'+esc(statuses[k])+'</option>').join("")))+
+    '<p id="taskStatusHelp" class="task-status-help" role="note">'+esc(statusHelp(["doing","blocked","submitted"].includes(t.status)?t.status:"doing"))+'</p>'+
+    field("ความคืบหน้าหรือผลการดำเนินงาน *","note",textarea("note","",true).replace('id="f_note"','id="f_note" aria-describedby="taskStatusHelp"'));
  }else if(mode==="taskReview"&&t){
   label=ctx.approve?"ตรวจรับงาน":"ส่งงานกลับไปแก้ไข";
   body='<p class="muted">'+esc(t.title)+'</p>'+field(ctx.approve?"ความเห็น":"เหตุผลที่ต้องแก้ไข *","note",textarea("note","",!ctx.approve));
@@ -366,9 +380,9 @@ async function bootstrap(){
   if(!user){
    window.BWDMeetingPdfReader?.close?.();
    state.member=null;clearPrivateView();setVisible("loginSection",true);
-   setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountName").textContent="";return;
+   setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountMenu").hidden=true;$("accountMenu").open=false;$("accountName").textContent="";return;
   }
-  $("logout").hidden=false;$("accountName").textContent=user.email||"บัญชีผู้ใช้";
+  $("logout").hidden=false;$("accountMenu").hidden=false;$("accountName").textContent=user.email||"บัญชีผู้ใช้";
   const {data:membership,error:membershipError}=await state.client.from("workspace_members").select("role,active").eq("user_id",user.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(!membership?.active){
@@ -392,14 +406,14 @@ function meetingCard(m){
  const docCount=state.documents.filter(d=>d.meeting_id===m.id).length;
  return '<article class="card meeting-card">'+
    '<div class="meeting-card-head"><span class="meeting-type">'+esc(names[m.kind]||"การประชุม")+'</span>'+meetingStatusLabel(m.status)+'</div>'+
-   '<h3>'+esc(m.title)+'</h3>'+
+   '<h3>'+esc(displayMeetingTitle(m))+'</h3>'+
    '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+(m.location?' · '+esc(m.location):'')+'</p>'+
    '<p class="meeting-counts">'+agendaCount+' วาระย่อย · '+docCount+' เอกสาร · '+taskCount+' ภารกิจ</p>'+
    '<div class="actions">'+button("เปิดรายละเอียด","openMeeting",{"meeting-id":m.id},"primary")+'</div></article>';
 }
 function taskCard(t,full=false){
  const links=taskLinks(t.id);
- const origin=[...new Set(links.map(l=>meeting(l.meeting_id)?.title).filter(Boolean))].join(" • ");
+ const origin=[...new Set(links.map(l=>{const m=meeting(l.meeting_id);return m?displayMeetingTitle(m):null;}).filter(Boolean))].join(" • ");
  const mine=isOwner(t),reviewer=canReview(t.id);
  const updates=state.updates.filter(u=>u.task_id===t.id);
  const upd=updates.slice(0,full?10:2);
@@ -433,16 +447,17 @@ function taskCard(t,full=false){
    '<div class="task-card-head"><h3>'+esc(t.title)+'</h3>'+statusLabel(t.status)+'</div>'+
    '<div class="task-meta"><p><span>ผู้รับผิดชอบ</span><strong>'+esc(t.owner_id?fullName(t.owner_id):"ยังไม่มอบหมาย")+'</strong></p>'+
    '<p><span>กำหนดส่ง</span><strong>'+esc(formatDate(t.due_on))+'</strong></p></div>'+
-   (origin?'<p class="task-origin">จากการประชุม: '+esc(origin)+'</p>':"")+
    (primary?'<div class="task-primary">'+primary+'</div>':"")+
    '<details class="task-details" data-task-details="'+esc(t.id)+'" '+(state.taskDetailsOpen[t.id]?'open':"")+'>'+
      '<summary><span>รายละเอียดและหลักฐาน</span><span class="task-detail-count">'+countLabel+'</span>'+
        '<span class="task-detail-chevron" aria-hidden="true">⌄</span></summary>'+
      '<div class="task-detail-body">'+
+       (origin?'<p class="task-origin">จากการประชุม: '+esc(origin)+'</p>':"")+
        (t.description?'<div class="task-description"><h4>รายละเอียดงาน</h4><p>'+esc(t.description)+'</p></div>':"")+
        (moreActions?'<div class="actions task-more-actions">'+moreActions+'</div>':"")+
-       evidenceInput+evidenceList+history+
-       (!t.description&&!moreActions&&!evidenceInput&&!evidenceList&&!history?'<p class="mini">ยังไม่มีรายละเอียดเพิ่มเติม</p>':"")+
+       (canUpload||attachments.length?'<details class="task-subdetails"><summary>หลักฐานและไฟล์ ('+attachments.length+')</summary><div class="task-subdetails-body">'+evidenceInput+evidenceList+'</div></details>':"")+
+       (history?'<details class="task-subdetails"><summary>ประวัติความคืบหน้า ('+updates.length+')</summary><div class="task-subdetails-body">'+history+'</div></details>':"")+
+       (!t.description&&!origin&&!moreActions&&!canUpload&&!attachments.length&&!history?'<p class="mini">ยังไม่มีรายละเอียดเพิ่มเติม</p>':"")+
      '</div></details>'+
    '</article>';
 }
@@ -452,11 +467,11 @@ function renderOverview(){
   '<div class="metric"><strong>'+state.meetings.length+'</strong><small>การประชุมที่เข้าถึงได้</small></div>'+
   '<div class="metric"><strong>'+mine.length+'</strong><small>งานที่รับผิดชอบ</small></div>'+
   '<div class="metric"><strong>'+review.length+'</strong><small>งานที่รอตรวจรับ</small></div></div>'+
+  section("งานที่ต้องติดตาม",mine.length?'<div class="cards">'+mine.slice(0,4).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีงานที่มอบหมายให้บัญชีนี้"),
+    button("ดูภารกิจทั้งหมด","goTasks"))+
   section("การประชุมล่าสุด",state.meetings.length?'<div class="cards">'+state.meetings.slice(0,4).map(meetingCard).join("")+'</div>':empty("ไม่มีการประชุมที่ได้รับสิทธิ์"),
     button("ดูการประชุมทั้งหมด","goMeetings"))+
-  section("งานที่เกี่ยวข้อง",mine.length?'<div class="cards">'+mine.slice(0,4).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีงานที่มอบหมายให้บัญชีนี้"),
-    button("ดูภารกิจ","goTasks"))+
-  '<div class="notice-box">R2 ยังไม่ส่งการแจ้งเตือนอัตโนมัติ งานที่ส่งตรวจจะปรากฏในหน้ารายการสำหรับผู้มีสิทธิ์ตรวจรับ</div>'+
+  '<div class="notice-box">ระบบยังไม่ส่งแจ้งเตือนให้ผู้รับผิดชอบโดยอัตโนมัติ กรุณาเข้ามาตรวจงานและติดตามงานที่ส่งตรวจในระบบ</div>'+
   '<div class="actions">'+button("แก้ไขชื่อที่แสดง","profile")+'</div>';
 }
 function renderMeetings(){
@@ -485,7 +500,7 @@ function renderMeeting(m){
    button("เปิดทุกหมวด","expandAgendas",{"meeting-id":m.id})+
    button("ย่อทุกหมวด","collapseAgendas",{"meeting-id":m.id})+'</div>':'';
  const jump='<nav class="meeting-jump" aria-label="ไปยังส่วนต่าง ๆ ของการประชุม">'+
-   '<a href="#bwd-agenda">วาระ ('+ag.length+')</a>'+
+   '<a href="#bwd-agenda">'+ag.length+' หัวข้อย่อย</a>'+
    '<a href="#bwd-documents">เอกสาร ('+docs.length+')</a>'+
    '<a href="#bwd-minutes">รายงาน</a>'+
    '<a href="#bwd-tasks">ภารกิจ ('+linked.length+')</a>'+
@@ -493,7 +508,7 @@ function renderMeeting(m){
  return '<div class="meeting-detail">'+
    '<div class="meeting-back">'+button("← กลับรายการประชุม","backMeetings")+'</div>'+
    '<header class="meeting-detail-head"><div><p class="eyebrow">'+esc(names[m.kind]||"การประชุม")+'</p>'+
-   '<h2>'+esc(m.title)+'</h2>'+
+   '<h2>'+esc(displayMeetingTitle(m))+'</h2>'+
    '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+' · '+esc(m.location||"ยังไม่กำหนดสถานที่")+'</p></div>'+
    '<div class="meeting-badges">'+meetingStatusLabel(m.status)+'<span class="role-pill">'+(editable?"แก้ไขได้":"อ่านอย่างเดียว")+'</span></div></header>'+
    jump+
@@ -844,6 +859,9 @@ function main(){
  $("cancelModal").addEventListener("click",()=>closeModal());
  actionForm.addEventListener("input",event=>{
    if(event.target?.matches?.("input,select,textarea"))clearFieldErrors();
+ });
+ actionForm.addEventListener("change",event=>{
+   if(editMode==="taskState"&&event.target?.id==="f_status")updateTaskStatusHelp(event.target.value);
  });
  actionForm.addEventListener("submit",submitForm);
  bootstrap();
