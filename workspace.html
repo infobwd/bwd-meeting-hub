@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#112c55">
+  <title>BWD Meeting Hub — พื้นที่ทำงานร่วมกัน (R2)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./portal.css">
+  <script src="./config.public.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./portal.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#screen">ข้ามไปยังเนื้อหา</a>
+  <header class="top">
+    <a class="mark" href="./index.html"><span class="logo">B</span><span><strong>BWD Meeting Hub</strong><small>พื้นที่จัดการประชุมและติดตามงาน</small></span></a>
+    <div class="account"><span id="accountName"></span><button type="button" id="logout" class="button subtle" hidden>ออกจากระบบ</button></div>
+  </header>
+  <main id="screen">
+    <div id="setup" class="center-card" hidden>
+      <p class="eyebrow">R2 — เตรียมเชื่อมระบบ</p>
+      <h1>ยังไม่ได้เชื่อมต่อฐานข้อมูลของโรงเรียน</h1>
+      <p>หน้าใช้งานร่วมกันจะเปิดได้เมื่อผู้ดูแลตั้งค่า Supabase, นำเข้ากฎสิทธิ์ และสร้างบัญชีผู้ใช้จริงแล้ว ไม่ควรใส่ข้อมูลประชุมภายในไว้ในหน้า R1 ที่เป็นระบบทดลอง</p>
+      <a href="https://github.com/infobwd/bwd-meeting-hub/blob/main/docs/R2_SETUP.md" class="button primary">อ่านคู่มือการตั้งค่า</a>
+    </div>
+    <section id="loginSection" class="center-card" hidden aria-labelledby="loginTitle">
+      <p class="eyebrow">พื้นที่ผู้ได้รับอนุญาต</p><h1 id="loginTitle">เข้าสู่ระบบประชุม</h1>
+      <p class="hint">บัญชีผู้ใช้ต้องได้รับการเพิ่มโดยผู้ดูแลโรงเรียนก่อน</p>
+      <form id="loginForm">
+        <label for="email">อีเมล</label><input id="email" name="email" type="email" required autocomplete="username">
+        <label for="password">รหัสผ่าน</label><input id="password" name="password" type="password" required autocomplete="current-password">
+        <button class="button primary wide" type="submit">เข้าสู่ระบบ</button>
+      </form>
+      <p class="notice" id="loginMessage" role="status"></p>
+    </section>
+    <section id="blocked" class="center-card" hidden>
+      <h1>บัญชียังไม่ได้รับสิทธิ์</h1><p>ผู้ดูแลต้องเพิ่มบัญชีเข้าในรายชื่อผู้ใช้และกำหนดบทบาทก่อนจึงจะดูการประชุมได้</p>
+      <p>สามารถออกจากระบบได้ที่มุมขวาบน</p>
+    </section>
+
+    <section id="workspace" hidden>
+      <div class="workspace-head">
+        <div><p class="eyebrow">พื้นที่ทำงานร่วมกัน</p><h1>การประชุมและภารกิจ</h1><p class="hint" id="workspaceSubtitle">แสดงเฉพาะข้อมูลที่บัญชีนี้ได้รับอนุญาต</p></div>
+        <span class="role-pill" id="roleLabel"></span>
+      </div>
+      <nav class="tabs" aria-label="เลือกส่วนงาน">
+        <button class="tab current" data-page="overview" type="button">ภาพรวม</button>
+        <button class="tab" data-page="meetings" type="button">การประชุม</button>
+        <button class="tab" data-page="tasks" type="button">งานของฉัน / งานที่ติดตาม</button>
+      </nav>
+      <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+      <div id="portalBody" aria-live="off"></div>
+    </section>
+  </main>
+  <dialog id="modal" aria-labelledby="modalTitle">
+    <form id="actionForm">
+      <div class="modal-head"><h2 id="modalTitle"></h2><button class="button subtle" type="button" id="closeModal" aria-label="ปิด">✕</button></div>
+      <div id="modalFields"></div>
+      <div class="modal-actions"><button class="button subtle" type="button" id="cancelModal">ยกเลิก</button><button class="button primary" type="submit" id="submitModal">บันทึก</button></div>
+    </form>
+  </dialog>
+  <footer>ข้อมูลในพื้นที่นี้ต้องได้รับอนุญาตก่อนเข้าถึง • ไม่มีระบบแจ้งเตือนอัตโนมัติใน R2</footer>
+</body>
+</html>
