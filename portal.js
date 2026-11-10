@@ -679,7 +679,7 @@ async function reload(){
   const queries=[
    c.from("meetings").select("*").order("created_at",{ascending:false}),
    c.from("meeting_access").select("*"),
-   c.from("agendas").select("*").order("section").order("position"),
+   c.from("agendas").select("*").is("retired_at",null).order("section").order("position"),
    c.from("decisions").select("*"),
    c.from("minutes").select("*"),
    c.from("tasks").select("*").order("updated_at",{ascending:false}),
