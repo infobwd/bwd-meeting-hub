@@ -128,52 +128,97 @@ function itemPreview(item,type){
  }
  return body+'</div>';
 }
+function estimatedItemLines(item,type){
+ const keys=type==="agenda"?extraAgendaLabels:outcomeLabels;
+ let lines=3+Math.ceil(String(item.title||"").length/65);
+ if(item.notes)lines+=2+Math.ceil(String(item.notes).length/75);
+ for(const [key] of keys){
+  if(item[key])lines+=2+Math.ceil(String(item[key]).length/75);
+ }
+ if(type==="minutes"&&!keys.some(([key])=>String(item[key]||"").trim()))lines+=2;
+ return lines;
+}
+function previewPages(items,type){
+ // Approximate page grouping for on-screen drafting, never a certified A4 export.
+ // Keep complete agenda items together; very long single entries may extend one page.
+ const pages=[[]];
+ let used=0;
+ for(const item of ordered(items)){
+  let current=pages[pages.length-1];
+  const headingCost=current.some(a=>Number(a.section)===Number(item.section))?0:3;
+  const lineCost=estimatedItemLines(item,type)+headingCost;
+  const budget=pages.length===1?22:33;
+  if(current.length&&used+lineCost>budget){
+   pages.push([]);
+   current=pages[pages.length-1];
+   used=0;
+  }
+  const newHeadingCost=current.some(a=>Number(a.section)===Number(item.section))?0:3;
+  current.push(item);used+=estimatedItemLines(item,type)+newHeadingCost;
+ }
+ return pages;
+}
 function previewMarkup(type,fields){
  const m=context.meeting,h=fields.header||{},items=ordered(fields.items||[]);
- const groups=[...new Set(items.map(a=>Number(a.section)))];
  const heading=documentNames[type];
  const snapshot=documents[type];
- const current=(snapshot?.document_fields?.items===fields.items);
  const ver=snapshot?'ฉบับที่ '+snapshot.revision:'ฉบับร่างใหม่ (ยังไม่บันทึก)';
  const status=snapshot?statusNames[snapshot.document_status]||"ร่าง":"ฉบับร่าง";
- let markup='<article class="doc02-page" aria-label="ตัวอย่างเอกสาร A4 ยังไม่ใช่เอกสารที่รับรองแล้ว">'+
-  '<div class="doc02-watermark">ตัวอย่างฉบับร่าง • ไม่ใช่เอกสารรับรอง</div>'+
-  '<h2>'+escapeHtml(heading)+'</h2>'+
-  '<p class="doc02-paper-center"><strong>'+escapeHtml(m.title||"การประชุม")+'</strong></p>'+
-  '<p class="doc02-paper-center">โรงเรียนบ้านวังด้ง · ครั้งที่ '+line(h.meeting_no)+'</p>'+
-  '<p class="doc02-paper-center">วันที่ '+escapeHtml(thaiDate(m.scheduled_on))+
+ const pages=previewPages(items,type);
+ const allSections=[...new Set(items.map(a=>Number(a.section)))];
+ const renderHeader=pageIndex=>{
+  if(pageIndex>0)return '<h2>'+escapeHtml(heading)+' (ต่อ)</h2>'+
+   '<p class="doc02-paper-center doc02-paper-continuation">'+escapeHtml(m.title||"การประชุม")+
+   ' · ครั้งที่ '+line(h.meeting_no,"กรุณาตรวจสอบครั้งที่")+'</p>';
+  let head='<h2>'+escapeHtml(heading)+'</h2>'+
+   '<p class="doc02-paper-center"><strong>'+escapeHtml(m.title||"การประชุม")+'</strong></p>'+
+   '<p class="doc02-paper-center">โรงเรียนบ้านวังด้ง · ครั้งที่ '+line(h.meeting_no,"กรุณาระบุครั้งที่")+'</p>'+
+   '<p class="doc02-paper-center">วันที่ '+escapeHtml(thaiDate(m.scheduled_on))+
    ' · '+line(h.venue||m.location)+'</p>'+
-  '<p class="doc02-paper-meta">สถานะเอกสาร DOC-02: '+escapeHtml(status)+' • '+escapeHtml(ver)+
+   '<p class="doc02-paper-meta">สถานะเอกสาร DOC-02: '+escapeHtml(status)+' • '+escapeHtml(ver)+
    ' • ยังไม่มีหลักฐานรับรองโดยที่ประชุม</p>';
- if(type==="agenda"){
-  markup+='<p><b>เวลาประชุม:</b> '+line(h.start_time,"ยังไม่กำหนดเวลา")+'</p>';
-  const docs=context.documents||[];
-  if(docs.length)markup+='<p><b>เอกสารประกอบที่ผูกกับการประชุม:</b> '+
-    docs.map(d=>escapeHtml(d.title||"เอกสารอ้างอิง")).join(" • ")+'</p>';
- }else{
-  markup+='<p><b>ผู้มาประชุม:</b> '+line(h.attendees)+'</p>'+
-   '<p><b>ผู้ไม่มาประชุม:</b> '+line(h.absentees,"ไม่มีข้อมูล / ตรวจสอบตามจริง")+'</p>'+
-   '<p><b>ผู้เข้าร่วมประชุม:</b> '+line(h.other_attendees,"ไม่มีข้อมูล / ตรวจสอบตามจริง")+'</p>'+
-   '<p><b>ผู้ทำหน้าที่ประธาน:</b> '+line(h.chair)+
-   (h.chair_office?' (ตำแหน่งประจำ: '+line(h.chair_office)+')':'')+'</p>'+
-   '<p><b>กรรมการและเลขานุการ:</b> '+line(h.secretary)+
-   (h.secretary_office?' (ตำแหน่งประจำ: '+line(h.secretary_office)+')':'')+'</p>'+
-   '<p><b>เริ่มประชุมเวลา:</b> '+line(h.start_time)+'</p>';
- }
- for(const section of groups){
-  const group=items.filter(a=>Number(a.section)===section);
-  markup+='<section class="doc02-paper-section"><h3>ระเบียบวาระที่ '+
-    escapeHtml(section)+' '+escapeHtml(titleForSection(section))+'</h3>'+
-    group.map(item=>itemPreview(item,type)).join("")+'</section>';
- }
- if(type==="minutes"){
-  markup+='<p><b>เลิกประชุมเวลา:</b> '+line(h.end_time)+'</p>'+
-   '<p class="doc02-recorder"><b>ผู้จดรายงานการประชุม:</b> '+line(h.recorder)+
-   (h.recorder_office?' (ตำแหน่งประจำ: '+line(h.recorder_office)+')':'')+'</p>'+
-   '<p class="doc02-not-signature">ยังไม่ใช่ลายมือชื่อหรือการรับรองรายงานโดยที่ประชุม</p>';
- }
- markup+='<footer class="doc02-paper-foot">พรีวิวเอกสารเพื่อการตรวจทานเท่านั้น — ไม่ใช่แบบเอกสารทางการที่ออกใช้แล้ว</footer></article>';
- return markup;
+  if(type==="agenda"){
+   head+='<p><b>เวลาประชุม:</b> '+line(h.start_time,"ยังไม่กำหนดเวลา")+'</p>';
+   const docs=context.documents||[];
+   if(docs.length)head+='<p><b>เอกสารประกอบที่ผูกกับการประชุม:</b> '+
+     docs.map(d=>escapeHtml(d.title||"เอกสารอ้างอิง")).join(" • ")+'</p>';
+  }else{
+   head+='<p><b>ผู้มาประชุม:</b> '+line(h.attendees)+'</p>'+
+    '<p><b>ผู้ไม่มาประชุม:</b> '+line(h.absentees,"ไม่มีข้อมูล / ตรวจสอบตามจริง")+'</p>'+
+    '<p><b>ผู้เข้าร่วมประชุม:</b> '+line(h.other_attendees,"ไม่มีข้อมูล / ตรวจสอบตามจริง")+'</p>'+
+    '<p><b>ผู้ทำหน้าที่ประธาน:</b> '+line(h.chair)+
+    (h.chair_office?' (ตำแหน่งประจำ: '+line(h.chair_office)+')':'')+'</p>'+
+    '<p><b>กรรมการและเลขานุการ:</b> '+line(h.secretary)+
+    (h.secretary_office?' (ตำแหน่งประจำ: '+line(h.secretary_office)+')':'')+'</p>'+
+    '<p><b>เริ่มประชุมเวลา:</b> '+line(h.start_time)+'</p>';
+  }
+  return head;
+ };
+ const pagesHtml=pages.map((page,pageIndex)=>{
+  let body='<article class="doc02-page" data-doc02-page="'+(pageIndex+1)+
+   '" aria-label="พรีวิว A4 หน้าที่ '+(pageIndex+1)+' จาก '+pages.length+' (ประมาณ) ยังไม่ได้รับรอง">'+
+   '<div class="doc02-watermark">ตัวอย่างฉบับร่าง • ไม่ใช่เอกสารรับรอง</div>'+
+   renderHeader(pageIndex);
+  for(const section of [...new Set(page.map(a=>Number(a.section)))]){
+   const group=page.filter(a=>Number(a.section)===section);
+   const firstOfSection=items.find(a=>Number(a.section)===section);
+   const continued=group[0]?.agenda_id!==firstOfSection?.agenda_id;
+   body+='<section class="doc02-paper-section"><h3>ระเบียบวาระที่ '+
+    escapeHtml(section)+' '+escapeHtml(titleForSection(section))+
+    (continued?' (ต่อ)':'')+'</h3>'+group.map(item=>itemPreview(item,type)).join("")+'</section>';
+  }
+  if(type==="minutes"&&pageIndex===pages.length-1){
+   body+='<p><b>เลิกประชุมเวลา:</b> '+line(h.end_time)+'</p>'+
+    '<p class="doc02-recorder"><b>ผู้จดรายงานการประชุม:</b> '+line(h.recorder)+
+    (h.recorder_office?' (ตำแหน่งประจำ: '+line(h.recorder_office)+')':'')+'</p>'+
+    '<p class="doc02-not-signature">ยังไม่ใช่ลายมือชื่อหรือการรับรองรายงานโดยที่ประชุม</p>';
+  }
+  body+='<footer class="doc02-paper-foot">พรีวิวสำหรับการตรวจทานเท่านั้น — ไม่ใช่เอกสารที่ออกใช้แล้ว'+
+   '<p class="doc02-page-counter">หน้า '+(pageIndex+1)+' / '+pages.length+' (ประมาณ)</p></footer></article>';
+  return body;
+ }).join("");
+ return '<p class="doc02-preview-info">ตัวอย่าง A4 แบ่งหน้าโดยประมาณสำหรับตรวจทานบนหน้าจอ'+
+  ' — การจัดหน้าสำหรับออกเอกสารราชการจริงอยู่ใน DOC-03</p>'+pagesHtml;
 }
 function selectedStatus(){
  const current=documents[activeType];return current?statusNames[current.document_status]||"ไม่ทราบสถานะ":"ฉบับร่าง (ยังไม่บันทึก)";
@@ -361,7 +406,7 @@ function init(){
 global.BWDDoc02={
  init,open,closePrivate,
  // Pure formatters exported for deterministic regression tests (no live calls).
- sourceFields,previewMarkup,escapeHtml,titleForSection,cleanItemTitle,
+ sourceFields,previewMarkup,previewPages,escapeHtml,titleForSection,cleanItemTitle,
  setTemplateForTest(key){templateKey=key;},
  setContextForTest(value){context=value;documents={agenda:null,minutes:null};activeType="agenda";}
 };
