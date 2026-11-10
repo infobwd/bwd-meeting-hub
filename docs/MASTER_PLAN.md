@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.9 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.10 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -241,3 +241,11 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Only authorized meeting-editor staff may create separated append-only agenda/minutes draft snapshots; independent admin can review, but DOC-02 cannot ratify, sign, officially issue or auto-assign meeting outcomes. Draft A4 visual preview is watermark-marked and linked to source agenda records; legacy report state remains distinct.
 - [ ] Still pending: independently authenticated multi-role security tests, real iPhone/Android and PDF/A4 layout proof, school appointment-order/acting-chair and committee-procedure verification, backup/restore, protected Drive rights, and formal DOC-03 sign/ratification/export. No official school acceptance implied by GitHub Pages success.
 - Follow-up details: [DOC-02 acceptance](R2_DOC02_TWO_DOCUMENT_DRAFTS_ACCEPTANCE_20261110.md). Subsequent work should prioritize **secretary-led DOC-02 mobile/document acceptance** and **DOC-03 design/security approval** before enabling authoritative output; EXT-03 external-to-internal topic/task continuity remains independently scoped.
+
+
+## 26. Audited correction of a legacy school meeting agenda source (2026-11-10)
+- **Design / rollback documented:** [R2 agenda correction plan](R2_AGENDA_SOURCE_CORRECTION_PLAN_20261110.md); no real meeting text, participant names, or private documents in this public repository.
+- **Implementation branch:** additive nullable `agendas.retired_at`, private append-only before/after snapshot and DOC-02 effective-source validator; browser only queries active agendas. Saved DOC-02 versions remain immutable. A stale editable draft can be rebased on the active topic list while retaining author-entered content for unchanged topic IDs; an explicit confirmation is required before saving a new revision.
+- **Data operation is a separately gated step:** one authorized conditional private Supabase transaction after code/migration rollout, keeping the original withdrawn topic (retired, never deleted), preserving all old document revisions and independently submitted legacy minutes. The visible agenda target is 13 active items across the original five groups; physical history may include additional retired rows. No automatic decisions, tasks, ratification or live notifications.
+- [ ] CI, PR review, additive migration, guarded data correction, effective-source count, private audit/snapshot and legacy document integrity verification.
+- [ ] Real secretary/admin/unauthorized-account tests, iPhone/Android A4 acceptance, backup/restore and official school sign-off remain required.

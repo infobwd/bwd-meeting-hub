@@ -49,10 +49,42 @@ function sourceFields(type,meeting,agendas){
   }))
  };
 }
+const userItemKeys=["background","references","question","substance","deliberation",
+ "information","resolution","proposal","directive"];
+function sameSource(items,sourceItems){
+ if(!Array.isArray(items)||items.length!==sourceItems.length)return false;
+ return items.every((item,i)=>{
+  const current=sourceItems[i];
+  return current&&["agenda_id","section","position","title","notes"].every(
+   key=>String(item[key]??"")===String(current[key]??""));
+ });
+}
+function hasChangedSource(type){
+ const fields=documents[type]?.document_fields;
+ if(!fields?.items||!context)return false;
+ const current=sourceFields(type,context.meeting,context.agendas);
+ return !sameSource(fields.items,current.items);
+}
+function alignDraftToSource(previous,meeting,agendas){
+ const fresh=sourceFields("agenda",meeting,agendas);
+ if(!previous?.items||!previous?.header)return fresh;
+ fresh.header={...fresh.header,...previous.header};
+ const previousById=new Map(previous.items.map(item=>[item.agenda_id,item]));
+ for(const item of fresh.items){
+  const saved=previousById.get(item.agenda_id);
+  if(saved){
+   for(const key of userItemKeys)item[key]=String(saved[key]??"");
+  }
+ }
+ return fresh;
+}
 function draftFields(type){
  const latest=documents[type];
- if(latest?.document_fields?.items&&latest?.document_fields?.header)
+ if(latest?.document_fields?.items&&latest?.document_fields?.header){
+  if(hasChangedSource(type)&&["draft","returned"].includes(latest.document_status))
+   return alignDraftToSource(latest.document_fields,context.meeting,context.agendas);
   return JSON.parse(JSON.stringify(latest.document_fields));
+ }
  return sourceFields(type,context.meeting,context.agendas);
 }
 function titleForSection(section){
@@ -181,13 +213,18 @@ function renderDialog(){
   '<p class="doc02-legacy-status">รายงานเดิมในระบบ: ฉบับที่ '+escapeHtml(leg.version||0)+
   ' · '+escapeHtml(({draft:"ฉบับร่าง",submitted:"รอตรวจทาน",approved:"ผู้บริหารตรวจทานแล้ว"})[leg.status]||leg.status)+
   ' — เป็นคนละชุดกับร่าง DOC-02 และจะไม่ถูกเขียนทับ</p>':"";
+ const sourceNotice=hasChangedSource(type)?
+  '<p class="notice-box" role="status">หัวข้อวาระต้นทางมีการปรับปรุงหลังบันทึกรุ่นนี้ '+
+  (["draft","returned"].includes(latest?.document_status)?
+   'ระบบแสดงหัวข้อที่ใช้อยู่ปัจจุบันและคงข้อความเพิ่มเติมของหัวข้อเดิมที่ยังมีอยู่ โปรดตรวจสอบก่อนบันทึกร่างรุ่นใหม่ ร่างรุ่นเดิมจะถูกเก็บไว้':'เอกสารรุ่นนี้เป็นหลักฐานตามหัวข้อเดิมที่บันทึกไว้ กรุณาตรวจสอบสถานะก่อนจัดทำร่างรุ่นใหม่')+
+  '</p>':"";
  $("doc02Title").textContent=type==="agenda"?"ร่างระเบียบวาระและพรีวิว A4":"ร่างรายงานการประชุมและพรีวิว A4";
  $("doc02Tabs").innerHTML=['agenda','minutes'].map(key=>
    '<button type="button" role="tab" data-doc02-type="'+key+'" aria-selected="'+(key===type)+'" class="button '+
    (key===type?"primary":"outline")+'">'+escapeHtml(documentNames[key])+'</button>').join("");
  $("doc02Status").innerHTML='<span class="status">'+escapeHtml(selectedStatus())+'</span>'+
    '<span class="mini">'+escapeHtml(latest?'รุ่นที่ '+latest.revision:'ยังไม่มีรุ่นที่บันทึก')+'</span>'+
-   '<p class="mini">เอกสารนี้แยกจากการรับรองรายงานการประชุมอย่างเป็นทางการ</p>'+legacyInfo;
+   '<p class="mini">เอกสารนี้แยกจากการรับรองรายงานการประชุมอย่างเป็นทางการ</p>'+legacyInfo+sourceNotice;
  $("doc02Editor").innerHTML=readonly?
   '<p class="notice-box">เอกสารรุ่นนี้ล็อกไว้ตามสถานะ หากส่งตรวจแล้วต้องให้ผู้ตรวจส่งกลับก่อนแก้ไข</p>'+
    editorMarkup(type,fields):editorMarkup(type,fields);
@@ -243,6 +280,8 @@ async function run(action,button){
  const row={p_meeting_id:m.id,p_doc_type:type,p_expected_revision:latest?.revision||0};
  let method,payload;
  if(action==="save"){
+  if(hasChangedSource(type)&&!global.confirm(
+   "วาระต้นทางมีการเปลี่ยนแปลง ต้องการบันทึกร่างรุ่นใหม่ตามหัวข้อปัจจุบันหรือไม่? ร่างรุ่นเดิมยังคงอยู่และไม่ถูกเขียนทับ"))return;
   method="r2_doc02_save_draft";payload={...row,p_fields:captureForm()};
  }else if(action==="submit"){
   if(hasUnsaved){setError("มีข้อมูลที่แก้ไขแต่ยังไม่ได้บันทึกร่าง กรุณาบันทึกร่างก่อนส่งตรวจ");return;}
@@ -321,7 +360,7 @@ function init(){
 global.BWDDoc02={
  init,open,closePrivate,
  // Pure formatters exported for deterministic regression tests (no live calls).
- sourceFields,previewMarkup,escapeHtml,titleForSection,
+ sourceFields,previewMarkup,escapeHtml,titleForSection,sameSource,alignDraftToSource,
  setTemplateForTest(key){templateKey=key;},
  setContextForTest(value){context=value;documents={agenda:null,minutes:null};activeType="agenda";}
 };
