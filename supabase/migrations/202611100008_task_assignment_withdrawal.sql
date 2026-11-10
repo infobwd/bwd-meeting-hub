@@ -21,7 +21,7 @@ begin
   left join public.profiles p on p.id=wm.user_id
   left join auth.users u on u.id=wm.user_id
   where wm.active and wm.role in ('admin','secretary','member')
-  order by display_name,wm.user_id;
+  order by 2,wm.user_id;
 end;
 $fn$;
 revoke all on function public.r2_task_assignee_options(uuid) from public,anon;
@@ -46,7 +46,7 @@ begin
   left join public.profiles p on p.id=wm.user_id
   left join auth.users u on u.id=wm.user_id
   where wm.active and wm.role in ('admin','secretary','member')
-  order by display_name,wm.user_id;
+  order by 2,wm.user_id;
 end;
 $fn$;
 revoke all on function public.r2_meeting_assignee_options(uuid) from public,anon;
