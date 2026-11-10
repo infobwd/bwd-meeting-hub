@@ -15,9 +15,9 @@ Updated: 2026-11-10 | Release status: **NOT APPROVED FOR PRODUCTION**
 - [x] Internal minutes review does **not** automatically mark a formal committee resolution ratified
 - [x] JavaScript syntax/source contract checks added to GitHub Actions
 
-## Mandatory staging verification (NOT YET RUN)
-- [ ] Provision a private Supabase project + apply all four migrations
-- [ ] Confirm SQL applies without error, database role grants are correct and storage private
+## Mandatory staging verification (database checks run; real-account browser acceptance pending)
+- [x] Provision a private Supabase project + apply all four migrations
+- [x] Confirm SQL applies without error, database role grants are correct and storage private (schema/grants/bucket check; upload/download testing remains open)
 - [ ] Admin sees own workspace and can create meeting
 - [ ] Secretary creates meeting and sees editor access limited to assigned meeting
 - [ ] Attendee cannot create/edit via RPC even when calling endpoint directly
