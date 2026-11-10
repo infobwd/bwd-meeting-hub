@@ -595,7 +595,7 @@ function meetingCard(m){
    '<p class="meeting-counts">'+agendaCount+' วาระย่อย · '+docCount+' เอกสาร · '+taskCount+' ภารกิจ</p>'+
    '<div class="actions">'+button("เปิดรายละเอียด","openMeeting",{"meeting-id":m.id},"primary")+'</div></article>';
 }
-function taskCard(t,full=false){
+function taskCard(t,full=true){
  const links=taskLinks(t.id);
  const origin=[...new Set(links.map(l=>{const m=meeting(l.meeting_id);return m?displayMeetingTitle(m):null;}).filter(Boolean))].join(" • ");
  const mine=isOwner(t),reviewer=canReview(t.id);
@@ -657,7 +657,7 @@ function renderOverview(){
   '<div class="metric"><strong>'+state.meetings.length+'</strong><small>การประชุมที่เข้าถึงได้</small></div>'+
   '<div class="metric"><strong>'+mine.length+'</strong><small>งานที่รับผิดชอบ</small></div>'+
   '<div class="metric"><strong>'+review.length+'</strong><small>งานที่รอตรวจรับ</small></div></div>'+
-  section("งานที่ต้องติดตาม",mine.length?'<div class="cards">'+mine.slice(0,4).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีงานที่มอบหมายให้บัญชีนี้"),
+  section("งานที่ต้องติดตาม",mine.length?'<div class="cards">'+mine.slice(0,4).map(t=>taskCard(t,false)).join("")+'</div>':empty("ยังไม่มีงานที่มอบหมายให้บัญชีนี้"),
     button("ดูภารกิจทั้งหมด","goTasks"))+
   section("การประชุมล่าสุด",state.meetings.length?'<div class="cards">'+state.meetings.slice(0,4).map(meetingCard).join("")+'</div>':empty("ไม่มีการประชุมที่ได้รับสิทธิ์"),
     button("ดูการประชุมทั้งหมด","goMeetings"))+
