@@ -248,6 +248,7 @@ async function bootstrap(){
   if(error&&error.message!=="Auth session missing!")throw error;
   state.user=user||null;
   if(!user){
+   window.BWDMeetingPdfReader?.close?.();
    state.member=null;state.activeMeeting=null;setVisible("loginSection",true);
    setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountName").textContent="";return;
   }
