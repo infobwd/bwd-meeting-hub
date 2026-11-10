@@ -14,7 +14,7 @@ function response(status:number,payload:Record<string,unknown>,origin:string|nul
  if(origin===ORIGIN){headers["Access-Control-Allow-Origin"]=ORIGIN;
   headers["Access-Control-Allow-Headers"]="authorization,apikey,content-type";
   headers["Access-Control-Allow-Methods"]="POST,OPTIONS";}
- return new Response(JSON.stringify(payload),{status,headers});
+ return new Response(status===204?null:JSON.stringify(payload),{status,headers});
 }
 function b64url(bytes:Uint8Array){
  let raw="";for(const b of bytes)raw+=String.fromCharCode(b);
