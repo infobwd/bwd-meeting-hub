@@ -19,8 +19,11 @@ const headerKeys=[
  ["end_time","เวลาเลิกประชุม (ตามข้อเท็จจริง)"],
  ["venue","สถานที่ประชุม"],
  ["chair","ผู้ทำหน้าที่ประธานในการประชุมจริง"],
+ ["chair_office","ตำแหน่งประจำของผู้ทำหน้าที่ประธาน (ถ้ามี)"],
  ["secretary","กรรมการและเลขานุการที่ทำหน้าที่จริง"],
+ ["secretary_office","ตำแหน่งประจำของกรรมการและเลขานุการ (ถ้ามี)"],
  ["recorder","ผู้จดรายงานการประชุมจริง"],
+ ["recorder_office","ตำแหน่งประจำของผู้จดรายงาน (ถ้ามี)"],
  ["attendees","ผู้มาประชุม / กรรมการ (ชื่อและบทบาทตามการแต่งตั้ง)"],
  ["absentees","ผู้ไม่มาประชุม (ถ้ามี พร้อมเหตุผล)"],
  ["other_attendees","ผู้เข้าร่วมประชุมที่ไม่ใช่กรรมการ (ถ้ามี)"]
@@ -34,7 +37,8 @@ function sourceFields(type,meeting,agendas){
  return {
   header:{
    meeting_no:"",start_time:"",end_time:"",venue:meeting.location||"",
-   chair:"",secretary:"",recorder:"",attendees:"",absentees:"",other_attendees:""
+   chair:"",chair_office:"",secretary:"",secretary_office:"",recorder:"",recorder_office:"",
+   attendees:"",absentees:"",other_attendees:""
   },
   items:ordered(agendas).map(a=>({
    agenda_id:a.id,section:Number(a.section),position:Number(a.position||0),
@@ -127,12 +131,17 @@ function previewMarkup(type,fields){
    ' • ยังไม่มีหลักฐานรับรองโดยที่ประชุม</p>';
  if(type==="agenda"){
   markup+='<p><b>เวลาประชุม:</b> '+line(h.start_time,"ยังไม่กำหนดเวลา")+'</p>';
+  const docs=context.documents||[];
+  if(docs.length)markup+='<p><b>เอกสารประกอบที่ผูกกับการประชุม:</b> '+
+    docs.map(d=>escapeHtml(d.title||"เอกสารอ้างอิง")).join(" • ")+'</p>';
  }else{
   markup+='<p><b>ผู้มาประชุม:</b> '+line(h.attendees)+'</p>'+
    '<p><b>ผู้ไม่มาประชุม:</b> '+line(h.absentees,"ไม่มีข้อมูล / ตรวจสอบตามจริง")+'</p>'+
    '<p><b>ผู้เข้าร่วมประชุม:</b> '+line(h.other_attendees,"ไม่มีข้อมูล / ตรวจสอบตามจริง")+'</p>'+
-   '<p><b>ผู้ทำหน้าที่ประธาน:</b> '+line(h.chair)+'</p>'+
-   '<p><b>กรรมการและเลขานุการ:</b> '+line(h.secretary)+'</p>'+
+   '<p><b>ผู้ทำหน้าที่ประธาน:</b> '+line(h.chair)+
+   (h.chair_office?' (ตำแหน่งประจำ: '+line(h.chair_office)+')':'')+'</p>'+
+   '<p><b>กรรมการและเลขานุการ:</b> '+line(h.secretary)+
+   (h.secretary_office?' (ตำแหน่งประจำ: '+line(h.secretary_office)+')':'')+'</p>'+
    '<p><b>เริ่มประชุมเวลา:</b> '+line(h.start_time)+'</p>';
  }
  for(const section of groups){
@@ -143,7 +152,8 @@ function previewMarkup(type,fields){
  }
  if(type==="minutes"){
   markup+='<p><b>เลิกประชุมเวลา:</b> '+line(h.end_time)+'</p>'+
-   '<p class="doc02-recorder"><b>ผู้จดรายงานการประชุม:</b> '+line(h.recorder)+'</p>'+
+   '<p class="doc02-recorder"><b>ผู้จดรายงานการประชุม:</b> '+line(h.recorder)+
+   (h.recorder_office?' (ตำแหน่งประจำ: '+line(h.recorder_office)+')':'')+'</p>'+
    '<p class="doc02-not-signature">ยังไม่ใช่ลายมือชื่อหรือการรับรองรายงานโดยที่ประชุม</p>';
  }
  markup+='<footer class="doc02-paper-foot">พรีวิวเอกสารเพื่อการตรวจทานเท่านั้น — ไม่ใช่แบบเอกสารทางการที่ออกใช้แล้ว</footer></article>';
