@@ -627,6 +627,6 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
 .cover-confirm label{display:block;min-width:0;font-size:13px;line-height:1.6;color:#35536c;cursor:pointer}
 @media(max-width:900px){
  .task-history-body{padding-inline:16px}
- .task-history-entry{padding-right:2px}
+ .task-history-entry{display:block;grid-template-columns:none;padding-right:2px}
  .meeting-cover-empty{padding:12px;min-height:52px}
 }
