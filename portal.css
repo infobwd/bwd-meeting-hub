@@ -159,3 +159,56 @@ html{-webkit-text-size-adjust:100%}
  .evidence-file .button{flex:1}
 }
 @media print{.evidence-preview{display:none!important}}
+
+/* R2 meeting PDF reader — same reading rhythm as Nongkum Sports V2/V3.
+   Private Drive PDF stays in Drive; PDF.js mode only reads local file bytes. */
+dialog.meeting-reader{position:fixed;inset:0;margin:auto;width:min(1120px,calc(100vw - 24px));height:min(94dvh,950px);max-width:none;max-height:none;overflow:hidden;padding:0;border:0;border-radius:18px;background:#f3f6fb;color:#173653;box-shadow:0 30px 80px #071c3b70}
+dialog.meeting-reader::backdrop{background:#071a33cf}
+.meeting-reader .reader-shell{height:100%;min-height:0;display:flex;flex-direction:column}
+.meeting-reader .reader-header{background:#10345f;color:white;padding:12px 14px;display:flex;align-items:center;gap:12px;min-height:67px;flex:none}
+.meeting-reader .reader-back{appearance:none;border:1px solid #a9bad066;color:#fff;border-radius:10px;background:#ffffff18;min-height:44px;padding:8px 12px;font-size:14px;flex:none}
+.meeting-reader .reader-title{flex:1;min-width:0;font-size:16px;line-height:1.35;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.meeting-reader .reader-tools{position:relative;flex:none}
+.meeting-reader .reader-tools summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;border:1px solid #8daaca75;padding:10px;border-radius:11px;min-height:44px;font-weight:500}
+.meeting-reader .reader-tools summary::-webkit-details-marker{display:none}
+.meeting-reader .reader-menu{position:absolute;z-index:25;top:calc(100% + 8px);right:0;width:min(340px,calc(100vw - 28px));max-height:min(65dvh,520px);overflow-y:auto;background:#fff;color:#1e3a58;border:1px solid #c6d7ea;box-shadow:0 12px 40px #08234546;border-radius:15px;padding:14px;display:grid;gap:11px}
+.meeting-reader .reader-tools-grid{display:grid;grid-template-columns:1fr 1fr auto auto auto;gap:6px;align-items:center}
+.meeting-reader .reader-menu button,.meeting-reader .reader-local-label{border:1px solid #afc7e1;border-radius:9px;background:#eff5fb;min-height:42px;color:#17446c;padding:7px 9px;font-size:13px}
+.meeting-reader .reader-tools-grid button:nth-child(1),.meeting-reader .reader-tools-grid button:nth-child(2){grid-column:span 2}
+.meeting-reader .reader-tools-grid button[aria-pressed=true]{background:#174d82;color:#fff}
+.meeting-reader .reader-tools-grid span{white-space:nowrap;font-size:11px;text-align:center}
+.meeting-reader .reader-tools-grid button:disabled{opacity:.4}
+.meeting-reader .reader-local-label{position:relative;display:flex;justify-content:center;align-items:center;cursor:pointer;color:#fff;background:#164978;overflow:hidden;font-weight:500}
+.meeting-reader .reader-local-label input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.meeting-reader .reader-local-label:focus-within{outline:3px solid #f6cc50;outline-offset:2px}
+.meeting-reader .reader-source{font-size:12px;font-weight:500;margin:0}
+.meeting-reader .reader-tip{font-size:12px;color:#5b7189;margin:0;line-height:1.5}
+.meeting-reader .reader-drive-button{width:100%}
+.meeting-reader .reader-menu a{font-size:13px;color:#184e7e;text-align:center;padding:6px}
+.meeting-reader .reader-draft{flex:none;margin:0;padding:8px 15px;background:#fff4dc;border-bottom:1px solid #e9d6ab;color:#72551b;font-size:12px;line-height:1.4}
+.meeting-reader .reader-status{margin:0;flex:none;padding:8px 14px;background:#e2f0ff;color:#234d77;font-size:12px}
+.meeting-reader .reader-status[hidden]{display:none!important}
+.meeting-reader .reader-status.reader-error{background:#fff0ed;color:#a2442f}
+.meeting-reader .reader-content{flex:1;min-height:0;display:flex;flex-direction:column}
+.meeting-reader .reader-drive-pane,.meeting-reader .reader-canvas-pane{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.meeting-reader .reader-drive-pane iframe{width:100%;height:100%;min-height:0;border:0;background:white}
+.meeting-reader .reader-canvas-host{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;text-align:center;padding:8px;background:#dce6f1;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+.meeting-reader .reader-canvas-host canvas{display:block;max-width:none;width:auto;margin:0 auto;background:#fff;box-shadow:0 1px 10px #18334b3b}
+.meeting-reader .reader-pagebar{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));min-height:65px;flex:none;background:white;border-top:1px solid #d3e0eb}
+.meeting-reader .reader-pagebar button{font-size:14px;min-height:44px;min-width:90px;border:0;border-radius:10px;background:#174775;color:white;padding:9px}
+.meeting-reader .reader-pagebar button:disabled{opacity:.4}
+.meeting-reader .reader-pagebar label{display:flex;align-items:center;gap:5px;font-size:12px}
+.meeting-reader .reader-pagebar input{width:56px;min-height:42px;font-size:16px;text-align:center;border:1px solid #b3c5d9;border-radius:8px}
+.meeting-reader .reader-pagebar span{white-space:nowrap;font-size:13px;color:#496883}
+@media(max-width:900px){
+ dialog.meeting-reader{width:100vw;height:100dvh;height:100svh;max-height:none;border-radius:0}
+ .meeting-reader .reader-header{padding:calc(10px + env(safe-area-inset-top)) 10px 10px;gap:8px}
+ .meeting-reader .reader-back span{display:none}
+ .meeting-reader .reader-back{min-width:45px}
+ .meeting-reader .reader-title{font-size:14px}
+ .meeting-reader .reader-tools summary span{display:none}
+ .meeting-reader .reader-pagebar{gap:6px;padding:10px 8px calc(9px + env(safe-area-inset-bottom))}
+ .meeting-reader .reader-pagebar button{min-width:70px;font-size:13px;padding:7px}
+}
+@media(max-width:380px){.meeting-reader .reader-pagebar{gap:4px}.meeting-reader .reader-pagebar button{min-width:58px;font-size:12px}}
+@media print{dialog.meeting-reader{display:none!important}}
