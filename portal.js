@@ -212,7 +212,7 @@ function meetingCard(m){
  const ag=state.agendas.filter(a=>a.meeting_id===m.id);
  const rights=isEditor(m.id);
  const count=state.links.filter(l=>l.meeting_id===m.id).length;
- return '<article class="card"><div class="card-head"><h3>'+esc(m.title)+'</h3><span class="status">'+esc(m.status==="ratified"?"ตรวจทานแล้ว":m.status==="minutes_review"?"รอตรวจรายงาน":"กำลังเตรียม")+'</span></div>'+
+ return '<article class="card"><div class="card-head"><h3>'+esc(m.title)+'</h3><span class="status">'+esc((m.status==="reviewed"||m.status==="ratified")?"ตรวจทานแล้ว":m.status==="minutes_review"?"รอตรวจรายงาน":"กำลังเตรียม")+'</span></div>'+
   '<p>'+esc(names[m.kind]||m.kind)+' • '+esc(formatDate(m.scheduled_on))+'</p><p>'+ag.length+' วาระ • '+count+' งานที่เชื่อมไว้'+(rights?" • แก้ไขได้":"")+'</p>'+
   '<div class="actions">'+button("ดูรายละเอียด","openMeeting",{"meeting-id":m.id})+'</div></article>';
 }
