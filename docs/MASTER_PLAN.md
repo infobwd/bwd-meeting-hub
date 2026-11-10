@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.4 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.5 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -202,3 +202,11 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - **DOC-01:** optional opt-in `legacy5`/`school6` agenda template per meeting; storage limit now allows section 6 but old RPC still limited to 1–5; explicit `r2_doc_add_agenda` requires `school6` for sixth section. No auto-remap of the existing 13 topics. Structured official-minutes snapshot and ratification evidence tables are **not writable by browser yet**, pending approved school process and DOC-02/03.
 - **Release separation:** source and database backend changes do **not** mean screens, PDF/Docs export, committee ratification, authorization testing or school go-live are complete. Keep existing R2 frontend unchanged through EXT-01/DOC-01. Before production use: verify CI, live schema/permissions and backup/restore, independent accounts for negative RLS role tests, school template sign-off.
 - **Next:** EXT-02 mode-first mobile forms and DOC-02 official-document draft previews, once backend applied and accepted; EXT-03 evidence-to-agenda/task provenance after, DOC-03 authorized export/ratification workflow after school sign-off.
+
+## 21. EXT-01 / DOC-01 live migration verification (2026-11-10)
+- [x] PR [#30](https://github.com/infobwd/bwd-meeting-hub/pull/30) merged; GitHub Actions run 231 passed (`node --test tests/*.test.mjs` / JS syntax).
+- [x] Applied additive migration 009 (`ext01_external_meeting_participation_20261110`) and 010 (`doc01_official_document_contract_20261110`) to Supabase Meeting. Confirmed migration history, nullable legacy meeting mode, five new RLS-protected SELECT-only client tables, eight authenticated audited RPCs with **anon execution revoked**, legacy RPCs still available, and agendas section check expanded 1..6.
+- [x] Baseline unchanged: 1 meeting, 13 agendas, 1 minutes row, 1 task; new attendance/report/template/minutes-version/ratification tables remain empty. No user invitations, Auth account changes, Drive sharing, old task/decision/status mutations, or official document ratification performed.
+- [ ] **Important security acceptance remaining:** 29 authenticated callable SECURITY DEFINER function warnings (21 existing + 8 new); these require per-role and per-meeting negative execution tests when authorized separate accounts are available. Supabase password leaked-password protection remains an unrelated configuration warning. Uninvited staff directory remains private.
+- [ ] **Important operational acceptance remaining:** protected backup + restore test, Supabase Free quota/privacy review, iPhone/Android usability, school sign-off on report ownership, template/committee ratification. No production go-live sign-off.
+- **Next code slice:** EXT-02 mode-first mobile create/report forms with actual permitted participant picker, report save/submit/withdraw/review, then DOC-02 A4 official document draft preview. Keep EXT-03 cross-meeting agenda/task linking and DOC-03 formal export/ratification separate until review. See [post-deploy verification](R2_EXT01_DOC01_BACKEND_ACCEPTANCE_20261110.md).
