@@ -134,7 +134,7 @@ function openModal(mode,ctx={}){
   if(!targets.length)return statusMessage("ยังไม่มีการประชุมอื่นที่สามารถเชื่อมกับงานนี้ได้",true);
   body='<p class="muted">'+esc(t.title)+'</p>'+
     field("เลือกการประชุม","meetingId",select("meetingId",targets.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")))+
-    '<p class="mini">งานเดิมจะถูกเชื่อมกับการประชุมใหม่โดยไม่สร้างงานซ้ำ</p>';
+    '<div class="notice-box">เมื่อเชื่อมแล้ว ผู้เข้าร่วมการประชุมใหม่ที่มีสิทธิ์อ่านงานจะเห็นรายละเอียด ความก้าวหน้า และหลักฐานของงานนี้ด้วย โปรดตรวจความเหมาะสมก่อนดำเนินการ</div>';
  }else if(mode==="taskNote"&&t){
   label="บันทึกความคืบหน้า";
   body='<p class="muted">'+esc(t.title)+'</p>'+field("บันทึก *","note",textarea("note","",true));
