@@ -151,7 +151,7 @@ function showFormError(message,key=""){
  if(summary){summary.hidden=false;summary.textContent=message;}
  if(!key)return;
  const fieldNode=$("f_"+key),errorNode=$("error_f_"+key);
- if(fieldNode){fieldNode.setAttribute("aria-invalid","true");fieldNode.focus({preventScroll:true});fieldNode.scrollIntoView({block:"nearest",behavior:"instant"});}
+ if(fieldNode){fieldNode.setAttribute("aria-invalid","true");fieldNode.focus({preventScroll:true});fieldNode.scrollIntoView({block:"nearest",behavior:"auto"});}
  if(errorNode){errorNode.textContent=message;errorNode.hidden=false;}
 }
 function isFormDirty(){
@@ -314,27 +314,37 @@ async function rpc(method,args){
  return data;
 }
 async function reload(){
- const c=state.client;
- const queries=[
-  c.from("meetings").select("*").order("created_at",{ascending:false}),
-  c.from("meeting_access").select("*"),
-  c.from("agendas").select("*").order("section").order("position"),
-  c.from("decisions").select("*"),
-  c.from("minutes").select("*"),
-  c.from("tasks").select("*").order("updated_at",{ascending:false}),
-  c.from("task_meeting_links").select("*"),
-  c.from("profiles").select("id,display_name"),
-  c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
-  c.from("task_evidence").select("*").order("created_at",{ascending:false}),
-  c.from("meeting_documents").select("*").order("added_at",{ascending:false})
- ];
- const results=await Promise.all(queries);
- const idx=results.findIndex(x=>x.error);
- if(idx!==-1)throw results[idx].error;
- [state.meetings,state.access,state.agendas,state.decisions,state.minutes,
-  state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents]=results.map(x=>x.data||[]);
- if(state.activeMeeting&&!meeting(state.activeMeeting))state.activeMeeting=null;
+ state.loading=true;state.loadError="";
  render();
+ try{
+  const client=state.client;
+  const queries=[
+   client.from("meetings").select("*").order("created_at",{ascending:false}),
+   client.from("meeting_access").select("*"),
+   client.from("agendas").select("*").order("section").order("position"),
+   client.from("decisions").select("*"),
+   client.from("minutes").select("*"),
+   client.from("tasks").select("*").order("updated_at",{ascending:false}),
+   client.from("task_meeting_links").select("*"),
+   client.from("profiles").select("id,display_name"),
+   client.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
+   client.from("task_evidence").select("*").order("created_at",{ascending:false}),
+   client.from("meeting_documents").select("*").order("added_at",{ascending:false})
+  ];
+  const results=await Promise.all(queries);
+  const error=results.find(x=>x.error)?.error;
+  if(error)throw error;
+  [state.meetings,state.access,state.agendas,state.decisions,state.minutes,
+   state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents]=results.map(x=>x.data||[]);
+  if(state.activeMeeting&&!meeting(state.activeMeeting))state.activeMeeting=null;
+  return true;
+ }catch(error){
+  state.loadError=friendlyError(error);
+  return false;
+ }finally{
+  state.loading=false;
+  render();
+ }
 }
 async function bootstrap(){
  if(!state.client)return;
@@ -508,21 +518,35 @@ function render(){
  const title=$("workspaceTitle");
  if(title&&title.textContent!==pageTitle)title.textContent=pageTitle;
  document.querySelectorAll("[data-page]").forEach(n=>{n.classList.toggle("current",n.dataset.page===state.page);if(n.dataset.page===state.page)n.setAttribute("aria-current","page");else n.removeAttribute("aria-current");});
- $("portalBody").innerHTML=state.page==="overview"?renderOverview():state.page==="meetings"?renderMeetings():renderTasks();
+ $("portalBody").innerHTML=state.loading?loadingMarkup():state.loadError?loadErrorMarkup():
+  state.page==="overview"?renderOverview():state.page==="meetings"?renderMeetings():renderTasks();
 }
 async function runMutation(method,args,success="บันทึกเรียบร้อย"){
  try{
   statusMessage("");
   await rpc(method,args);
-  closeModal();await reload();statusMessage(success);
- }catch(e){statusMessage("ไม่สามารถบันทึกได้: "+(e.message||"ลองใหม่อีกครั้ง"),true);}
+ }catch(error){
+  const message=friendlyError(error);
+  if(modal.open)showFormError(message);
+  statusMessage(message,true);
+  return false;
+ }
+ await closeModal({force:true});
+ const updated=await reload();
+ statusMessage(updated?success:"บันทึกข้อมูลแล้ว แต่ยังแสดงรายการล่าสุดไม่ได้ กรุณากดลองโหลดข้อมูลอีกครั้ง",!updated);
+ return true;
 }
 async function submitForm(ev){
- ev.preventDefault();const fd=new FormData(actionForm);const g=(key,max=200)=>readStr(fd,key,max);
+ ev.preventDefault();
+ if(formSubmitting||!actionForm.reportValidity())return;
+ formSubmitting=true;
+ clearFieldErrors();
+ const fd=new FormData(actionForm);const g=(key,max=200)=>readStr(fd,key,max);
  const mid=editCtx.meetingId,tid=editCtx.taskId;
  const t=state.tasks.find(t=>t.id===tid);
  const mode=editMode;
  $("submitModal").disabled=true;
+ $("submitModal").textContent="กำลังบันทึก…";
  let method=null,args=null,msg="บันทึกเรียบร้อย";
  try{
  switch(mode){
@@ -532,7 +556,9 @@ async function submitForm(ev){
   case "minutes":method="r2_save_minutes";args={p_meeting_id:mid,p_body:g("body",8000),p_expected_version:Number(g("version"))};msg="บันทึกรายงานฉบับร่างแล้ว";break;
   case "minutesReview":method="r2_review_minutes";args={p_meeting_id:mid,p_approve:editCtx.approve,p_note:g("note",2000)};break;
   case "newTask":method="r2_create_task";args={p_meeting_id:g("meetingId",36),p_title:g("title",200),p_owner_id:g("ownerId",36)||null,p_due_on:g("dueOn",10)||null,p_description:g("description",8000),p_agenda_id:g("agendaId",36)||null};
-    if(args.p_agenda_id&&agenda(args.p_agenda_id)?.meeting_id!==args.p_meeting_id){statusMessage("วาระต้องอยู่ในการประชุมที่เลือก",true);return;}break;
+    if(args.p_agenda_id&&agenda(args.p_agenda_id)?.meeting_id!==args.p_meeting_id){
+      showFormError("วาระต้องอยู่ในการประชุมที่เลือก","agendaId");return;
+    }break;
   case "taskState":method="r2_change_task";args={p_task_id:tid,p_new_status:g("status"),p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskReview":method="r2_review_task";args={p_task_id:tid,p_approve:editCtx.approve,p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskOwner":method="r2_set_task_owner";args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version};break;
@@ -541,7 +567,7 @@ async function submitForm(ev){
   case "access":method="r2_add_access";args={p_meeting_id:mid,p_user_id:g("userId",36),p_role:g("role",20)};break;
   case "driveDoc":{
     const fileId=parseDriveFileId(g("driveUrl",900));
-    if(!fileId){statusMessage("โปรดใส่ลิงก์ไฟล์ Google Drive ที่ถูกต้อง (ไม่ใช่ลิงก์โฟลเดอร์)",true);return;}
+    if(!fileId){showFormError("โปรดใส่ลิงก์ไฟล์ Google Drive ที่ถูกต้อง ไม่ใช่ลิงก์โฟลเดอร์","driveUrl");return;}
     method="r2_attach_drive_document";
     args={p_meeting_id:mid,p_drive_file_id:fileId,p_title:g("title",200),p_document_type:g("documentType",40)};
     msg="ผูกเอกสารเข้ากับการประชุมแล้ว";
@@ -552,7 +578,13 @@ async function submitForm(ev){
  }
  if(!method)return;
  await runMutation(method,args,msg);
- }finally{$("submitModal").disabled=false;}
+ }catch(error){
+  showFormError(friendlyError(error));
+ }finally{
+  formSubmitting=false;
+  $("submitModal").disabled=false;
+  $("submitModal").textContent="บันทึก";
+ }
 }
 async function uploadEvidence(file,taskId,input){
  const types={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
@@ -563,7 +595,8 @@ async function uploadEvidence(file,taskId,input){
   const {error:uploadError}=await state.client.storage.from("meeting-evidence").upload(path,file,{contentType:file.type,upsert:false});
   if(uploadError)throw uploadError;
   await rpc("r2_register_evidence",{p_task_id:taskId,p_object_path:path,p_original_name:file.name.slice(0,200)});
-  await reload();statusMessage("แนบหลักฐานในพื้นที่ส่วนตัวแล้ว");
+  const refreshed=await reload();
+  statusMessage(refreshed?"แนบหลักฐานในพื้นที่ส่วนตัวแล้ว":"แนบหลักฐานสำเร็จแล้ว แต่ยังโหลดรายการล่าสุดไม่ได้ กรุณาลองโหลดข้อมูลอีกครั้ง",!refreshed);
  }catch(e){statusMessage("แนบหลักฐานไม่สำเร็จ: "+(e.message||"ลองใหม่"),true);}
  finally{input.disabled=false;input.value="";}
 }
@@ -664,6 +697,7 @@ async function actionClick(ev){
  const b=ev.target.closest("[data-action]");if(!b)return;
  const act=b.dataset.action,mid=b.dataset.meetingId,tid=b.dataset.taskId,aid=b.dataset.agendaId;
  switch(act){
+  case "retryLoad":await reload();break;
   case "goMeetings":setPage("meetings");break;
   case "goTasks":setPage("tasks");break;
   case "openMeeting":state.meetingListScroll=window.scrollY;state.page="meetings";state.activeMeeting=mid;render();window.scrollTo(0,0);break;
