@@ -1,6 +1,6 @@
 /* BWD Meeting Hub R2 — sports-style mobile reader for meeting documents.
- * Embedded Google Drive Preview honors Google ACLs. PDF.js book mode uses ONLY
- * a PDF explicitly selected from the user's device; no private Drive URL fetch.
+ * PDF.js book mode loads bytes from a Supabase RLS-gated Drive adapter first.
+ * Google Drive Preview honors Drive ACLs as fallback; local files stay on device.
  */
 (() => {
 "use strict";
