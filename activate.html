@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#112c55">
+  <title>ตั้งรหัสผ่าน — BWD Meeting Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./portal.css">
+  <script src="./config.public.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./activate.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="mark" href="./workspace.html"><span class="logo">B</span><span><strong>BWD Meeting Hub</strong><small>พื้นที่จัดการประชุมและติดตามงาน</small></span></a>
+  </header>
+  <main>
+    <section class="center-card" aria-labelledby="activationTitle">
+      <p class="eyebrow">ตั้งค่าบัญชีผู้ใช้</p>
+      <h1 id="activationTitle">ตั้งรหัสผ่านเพื่อเข้าสู่ระบบ</h1>
+      <p class="hint">สำหรับผู้ที่ได้รับเชิญจากโรงเรียนเท่านั้น หากเคยกดคำเชิญแล้วพบหน้า localhost ให้ขอลิงก์ตั้งรหัสผ่านใหม่ที่นี่</p>
+      <p class="notice-box">ระบบยังอยู่ระหว่างตรวจรับ ห้ามบันทึกข้อมูลการประชุมจริงจนกว่าผู้ดูแลจะอนุญาต</p>
+      <p id="activationStatus" role="status" aria-live="polite">กำลังตรวจสอบลิงก์เข้าสู่ระบบ…</p>
+      <form id="recoveryForm" hidden>
+        <label for="recoveryEmail">อีเมลที่ได้รับคำเชิญ</label>
+        <input id="recoveryEmail" name="email" type="email" autocomplete="email" required>
+        <button class="button primary wide" type="submit">ส่งอีเมลตั้งรหัสผ่านใหม่</button>
+        <p class="hint">เปิดอีเมลฉบับใหม่ แล้วกดลิงก์ที่ได้รับอีกครั้ง อย่าส่งลิงก์หรือรหัสผ่านให้ผู้อื่น</p>
+      </form>
+      <form id="passwordForm" hidden>
+        <label for="newPassword">รหัสผ่านใหม่ (อย่างน้อย 12 ตัวอักษร)</label>
+        <input id="newPassword" name="password" type="password" autocomplete="new-password" minlength="12" required>
+        <label for="confirmPassword">ยืนยันรหัสผ่าน</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="12" required>
+        <button class="button primary wide" type="submit">บันทึกรหัสผ่านใหม่</button>
+      </form>
+      <p><a href="./workspace.html">กลับหน้าเข้าสู่ระบบ</a></p>
+    </section>
+  </main>
+  <footer>ใช้ลิงก์สำหรับบัญชีที่ได้รับอนุญาตเท่านั้น • ไม่บันทึกรหัสผ่านบนหน้าเว็บ</footer>
+</body>
+</html>
