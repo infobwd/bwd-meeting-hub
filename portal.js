@@ -13,7 +13,7 @@ const statuses={todo:"ยังไม่เริ่ม",doing:"กำลัง�
 const sections={"1":"ประธานแจ้งให้ทราบ","2":"รับรองรายงานครั้งก่อน","3":"เรื่องสืบเนื่อง","4":"เรื่องเพื่อพิจารณา","5":"เรื่องอื่น ๆ"};
 const state={
   client:null,user:null,member:null,profile:null,meetings:[],access:[],agendas:[],decisions:[],
-  minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],
+  minutes:[],tasks:[],links:[],updates:[],evidence:[],profiles:[],documents:[],
   page:"overview",activeMeeting:null,taskFilter:"all",loading:false
 };
 const modal=$("modal"), actionForm=$("actionForm");
@@ -92,6 +92,23 @@ function select(key,html){
 }
 function readStr(fd,key,max=200){const v=fd.get(key);return typeof v==="string"?v.trim().slice(0,max):"";}
 function uuid(){return crypto.randomUUID();}
+function parseDriveFileId(value){
+  try{
+    const u=new URL(String(value||"").trim());
+    if(u.protocol!=="https:"||!["drive.google.com","docs.google.com"].includes(u.hostname))return null;
+    const seg=u.pathname.split("/").filter(Boolean);
+    if(seg.length<3||!["file","document","spreadsheets","presentation"].includes(seg[0])||seg[1]!=="d")return null;
+    return /^[A-Za-z0-9_-]{10,128}$/.test(seg[2])?seg[2]:null;
+  }catch{return null;}
+}
+function meetingDocumentMarkup(d){
+  if(!/^[A-Za-z0-9_-]{10,128}$/.test(d.drive_file_id||""))return "";
+  const labels={agenda_draft:"ร่างระเบียบวาระ",proposed_resolution:"ร่างมติเสนอเพื่อพิจารณา",minutes_draft:"ร่างรายงานการประชุม",other:"เอกสารประกอบ"};
+  const href="https://drive.google.com/file/d/"+encodeURIComponent(d.drive_file_id)+"/view";
+  return '<div class="item"><h3>'+esc(d.title)+'</h3>'+
+    '<p><span class="status gold">'+esc(labels[d.document_type]||"เอกสารประกอบ")+'</span> <span class="mini">ฉบับร่าง — ยังไม่รับรอง</span></p>'+
+    '<div class="actions"><a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิด PDF ใน Google Drive</a></div></div>';
+}
 function closeModal(){if(modal.open)modal.close();}
 async function confirmAction(message){
   const dialog=$("confirmDialog");
@@ -177,6 +194,13 @@ function openModal(mode,ctx={}){
     '<div class="notice-box">บัญชีต้องได้รับการสร้างในระบบของโรงเรียนก่อน การเพิ่มชื่อที่นี่ไม่ใช่การส่งคำเชิญทางอีเมล</div>'+
     field("รหัสบัญชีผู้ใช้ (UUID) *","userId",input("userId","text","",true,36))+
     field("สิทธิ์ในการประชุม","role",select("role",'<option value="attendee">ผู้เข้าประชุม</option><option value="editor">เลขานุการ / ผู้จัดการวาระ</option><option value="guest">ผู้เข้าร่วมภายนอก</option>'));
+ }else if(mode==="driveDoc"&&m){
+  label="แนบเอกสารจาก Google Drive";
+  body='<p class="muted">'+esc(m.title)+'</p>'+
+    '<div class="notice-box">เอกสารจะแสดงเป็นฉบับร่าง ไม่ใช่มติที่รับรองแล้ว ผู้เปิดต้องได้รับสิทธิ์ใน Google Drive ด้วย</div>'+
+    field("ชื่อเอกสาร *","title",input("title","text","",true,200))+
+    field("ประเภทเอกสาร","documentType",select("documentType",'<option value="proposed_resolution">ร่างมติเสนอเพื่อพิจารณา</option><option value="agenda_draft">ร่างระเบียบวาระ</option><option value="minutes_draft">ร่างรายงานการประชุม</option><option value="other">เอกสารประกอบอื่น ๆ</option>'))+
+    field("ลิงก์ Google Drive *","driveUrl",input("driveUrl","url","",true,900));
  }else if(mode==="profile"){
   label="ชื่อที่แสดงของฉัน";
   body=field("ชื่อแสดง *","displayName",input("displayName","text",state.profile?.display_name||"",true,160));
@@ -205,13 +229,14 @@ async function reload(){
   c.from("task_meeting_links").select("*"),
   c.from("profiles").select("id,display_name"),
   c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
-  c.from("task_evidence").select("*").order("created_at",{ascending:false})
+  c.from("task_evidence").select("*").order("created_at",{ascending:false}),
+  c.from("meeting_documents").select("*").order("added_at",{ascending:false})
  ];
  const results=await Promise.all(queries);
  const idx=results.findIndex(x=>x.error);
  if(idx!==-1)throw results[idx].error;
  [state.meetings,state.access,state.agendas,state.decisions,state.minutes,
-  state.tasks,state.links,state.profiles,state.updates,state.evidence]=results.map(x=>x.data||[]);
+  state.tasks,state.links,state.profiles,state.updates,state.evidence,state.documents]=results.map(x=>x.data||[]);
  if(state.activeMeeting&&!meeting(state.activeMeeting))state.activeMeeting=null;
  render();
 }
@@ -306,8 +331,11 @@ function renderMeeting(m){
  const ag=state.agendas.filter(a=>a.meeting_id===m.id);
  const linked=state.links.filter(l=>l.meeting_id===m.id);
  const attendees=state.access.filter(a=>a.meeting_id===m.id);
+ const docs=state.documents.filter(d=>d.meeting_id===m.id);
  return '<div class="actions" style="margin-bottom:14px">'+button("← กลับการประชุม","backMeetings")+'</div>'+
   '<div class="flex-between"><div><p class="eyebrow">'+esc(names[m.kind]||m.kind)+'</p><h2>'+esc(m.title)+'</h2><p class="hint">'+esc(formatDate(m.scheduled_on))+' • '+esc(m.location||"ยังไม่กำหนดสถานที่")+'</p></div><span class="role-pill">'+(editable?"แก้ไขได้":"อ่านอย่างเดียว")+'</span></div>'+
+  section("เอกสารประกอบการประชุม",docs.length?docs.map(meetingDocumentMarkup).join(""):empty("ยังไม่มีเอกสารประกอบ"),
+    editable&&m.status!=="archived"&&m.status!=="ratified"?button("＋ แนบลิงก์ Google Drive","attachDriveDoc",{"meeting-id":m.id},"primary"):"")+
   section("ระเบียบวาระ",ag.length?ag.map(a=>{
    const d=state.decisions.find(d=>d.agenda_id===a.id);
    return '<article class="item"><div class="agenda-label">วาระที่ '+esc(a.section)+' — '+esc(sections[a.section])+'</div><h3>'+esc(a.title)+'</h3>'+
@@ -370,6 +398,14 @@ async function submitForm(ev){
   case "taskNote":method="r2_add_task_note";args={p_task_id:tid,p_note:g("note",4000)};break;
   case "linkTask":method="r2_link_task";args={p_task_id:tid,p_meeting_id:g("meetingId",36),p_agenda_id:null};msg="เชื่อมงานเดิมกับการประชุมใหม่แล้ว";break;
   case "access":method="r2_add_access";args={p_meeting_id:mid,p_user_id:g("userId",36),p_role:g("role",20)};break;
+  case "driveDoc":{
+    const fileId=parseDriveFileId(g("driveUrl",900));
+    if(!fileId){statusMessage("โปรดใส่ลิงก์ไฟล์ Google Drive ที่ถูกต้อง (ไม่ใช่ลิงก์โฟลเดอร์)",true);return;}
+    method="r2_attach_drive_document";
+    args={p_meeting_id:mid,p_drive_file_id:fileId,p_title:g("title",200),p_document_type:g("documentType",40)};
+    msg="ผูกเอกสารเข้ากับการประชุมแล้ว";
+    break;
+  }
   case "profile":method="r2_save_profile";args={p_display_name:g("displayName",160)};break;
   default:return;
  }
@@ -506,6 +542,7 @@ async function actionClick(ev){
   case "approveMinutes":openModal("minutesReview",{meetingId:mid,approve:true});break;
   case "rejectMinutes":openModal("minutesReview",{meetingId:mid,approve:false});break;
   case "profile":openModal("profile");break;
+  case "attachDriveDoc":openModal("driveDoc",{meetingId:mid});break;
   case "printMinutes":printMinutes(mid);break;
   case "previewEvidence":await previewEvidence(b.dataset.objectPath);break;
   case "downloadEvidence":await downloadEvidence(b.dataset.objectPath);break;
