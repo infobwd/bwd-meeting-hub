@@ -18,6 +18,7 @@ const state={
 };
 const modal=$("modal"), actionForm=$("actionForm");
 let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus;
+let previewObjectUrl=null,previewFile=null,previewReturnFocus=null,previewRequestId=0;
 function statusLabel(s){const tone=s==="approved"?"green":s==="blocked"?"red":s==="submitted"?"purple":s==="doing"?"gold":"";return '<span class="status '+tone+'">'+esc(statuses[s]||s)+'</span>';}
 function formatDate(v){if(!v)return "ยังไม่กำหนดวัน";const d=new Date(v+"T12:00:00");return Number.isNaN(d.getTime())?"ยังไม่กำหนดวัน":new Intl.DateTimeFormat("th-TH",{year:"numeric",month:"short",day:"numeric"}).format(d);}
 function fullName(id){const p=state.profiles.find(p=>p.id===id);return p?.display_name|| (id===state.user?.id?"บัญชีของฉัน":"บัญชีผู้ใช้");}
@@ -269,7 +270,10 @@ function taskCard(t,full=false){
   (reviewer?button("ติดตามในการประชุมอื่น","linkTask",{"task-id":t.id}):"")+
   '</div>'+
   ((mine||reviewer)?'<div class="field" style="margin-top:9px"><label for="evidence-'+esc(t.id)+'">แนบหลักฐาน (PDF/รูปภาพ สูงสุด 10 MB)</label><input id="evidence-'+esc(t.id)+'" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" data-evidence-upload="'+esc(t.id)+'"></div>':'')+
-  (attachments.length?'<div><h3>หลักฐานส่วนตัว</h3><div class="actions">'+attachments.map(e=>button(e.original_name||"เปิดไฟล์","downloadEvidence",{"object-path":e.object_path})).join("")+'</div></div>':'')+
+  (attachments.length?'<div class="evidence-list"><h3>หลักฐานส่วนตัว</h3>'+
+     attachments.map(e=>'<div class="evidence-file"><div class="evidence-file-name">'+esc(e.original_name||"ไฟล์หลักฐาน")+'</div>'+
+       '<div class="actions">'+button("ดูตัวอย่าง","previewEvidence",{"object-path":e.object_path},"primary")+
+       button("ดาวน์โหลด","downloadEvidence",{"object-path":e.object_path})+'</div></div>').join("")+'</div>':'')+
   (upd.length?'<div><h3>ประวัติงาน</h3>'+upd.map(u=>'<div class="feed">'+esc(formatDate((u.created_at||"").slice(0,10)))+' • '+esc(fullName(u.author_id))+' • '+esc(statuses[u.new_status]||u.new_status)+(u.note?'<p>'+esc(u.note)+'</p>':'')+'</div>').join("")+'</div>':'')+
   '</article>';
 }
@@ -386,14 +390,89 @@ async function uploadEvidence(file,taskId,input){
  }catch(e){statusMessage("แนบหลักฐานไม่สำเร็จ: "+(e.message||"ลองใหม่"),true);}
  finally{input.disabled=false;input.value="";}
 }
+function fileKind(path){
+ const ext=String(path||"").split(".").pop()?.toLowerCase();
+ return ({pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"})[ext]||null;
+}
+function authorizedEvidence(path){
+ return state.evidence.find(e=>e.object_path===path);
+}
+function downloadBlob(blob,filename){
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement("a");
+ link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
 async function downloadEvidence(path){
+ const entry=authorizedEvidence(path);
+ if(!entry)return statusMessage("ไม่พบไฟล์ที่บัญชีนี้มีสิทธิ์เปิด",true);
  try{
+  const blob=(previewFile?.path===path?previewFile.blob:null)||
+    await (async()=>{
+      const {data,error}=await state.client.storage.from("meeting-evidence").download(path);
+      if(error)throw error;
+      return data;
+    })();
+  downloadBlob(blob,entry.original_name||path.split("/").pop()||"evidence");
+ }catch(e){statusMessage("ดาวน์โหลดไม่สำเร็จ: "+(e.message||"ไม่มีสิทธิ์"),true);}
+}
+function clearEvidencePreview(){
+ previewRequestId++;
+ if(previewObjectUrl){URL.revokeObjectURL(previewObjectUrl);previewObjectUrl=null;}
+ previewFile=null;
+ $("previewDownload").disabled=true;
+ $("evidencePreviewBody").replaceChildren();
+ if(previewReturnFocus?.isConnected)previewReturnFocus.focus({preventScroll:true});
+ previewReturnFocus=null;
+}
+async function previewEvidence(path){
+ const entry=authorizedEvidence(path),mime=fileKind(path);
+ if(!entry||!mime)return statusMessage("ไฟล์นี้ไม่รองรับการดูตัวอย่างหรือคุณไม่มีสิทธิ์เข้าถึง",true);
+ const dialog=$("evidencePreview");
+ const viewer=$("evidencePreviewBody");
+ if(dialog.open)dialog.close();
+ const requestId=++previewRequestId;
+ previewReturnFocus=document.activeElement;
+ $("evidencePreviewTitle").textContent=entry.original_name||"ไฟล์หลักฐาน";
+ $("previewDownload").disabled=true;
+ viewer.replaceChildren();
+ const loading=document.createElement("p");
+ loading.className="preview-message";loading.textContent="กำลังเปิดไฟล์จากพื้นที่ส่วนตัว…";
+ viewer.append(loading);
+ dialog.showModal();
+ $("closeEvidencePreview").focus({preventScroll:true});
+ try{
+  // Storage's private download policy remains the authorization boundary.
   const {data,error}=await state.client.storage.from("meeting-evidence").download(path);
   if(error)throw error;
-  const objectUrl=URL.createObjectURL(data);
-  const a=document.createElement("a");a.href=objectUrl;a.download=path.split("/").pop()||"evidence";
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),5000);
- }catch(e){statusMessage("เปิดไฟล์ไม่ได้: "+(e.message||"ไม่มีสิทธิ์"),true);}
+  if(requestId!==previewRequestId||!dialog.open)return;
+  const typedBlob=new Blob([data],{type:mime});
+  previewFile={path,blob:typedBlob};
+  previewObjectUrl=URL.createObjectURL(typedBlob);
+  viewer.replaceChildren();
+  if(mime==="application/pdf"){
+   const frame=document.createElement("iframe");
+   frame.className="preview-pdf";
+   frame.title="ตัวอย่าง PDF: "+(entry.original_name||"ไฟล์หลักฐาน");
+   frame.src=previewObjectUrl;
+   viewer.append(frame);
+   const help=document.createElement("p");
+   help.className="preview-help";
+   help.textContent="หากอุปกรณ์ไม่แสดง PDF ในหน้าต่างนี้ ให้เลือกดาวน์โหลดเพื่อเปิดอ่าน";
+   viewer.append(help);
+  }else{
+   const img=document.createElement("img");
+   img.className="preview-image";
+   img.alt="ภาพหลักฐาน: "+(entry.original_name||"ไฟล์แนบ");
+   img.src=previewObjectUrl;
+   viewer.append(img);
+  }
+  $("previewDownload").disabled=false;
+ }catch(e){
+  if(requestId!==previewRequestId||!dialog.open)return;
+  viewer.textContent="ไม่สามารถเปิดตัวอย่างได้ โปรดตรวจสิทธิ์หรือทดลองอีกครั้ง";
+  statusMessage("เปิดตัวอย่างไม่สำเร็จ: "+(e.message||"ไม่สามารถอ่านไฟล์"),true);
+ }
 }
 function printMinutes(mid){
  const m=meeting(mid),min=minute(mid);
@@ -428,6 +507,7 @@ async function actionClick(ev){
   case "rejectMinutes":openModal("minutesReview",{meetingId:mid,approve:false});break;
   case "profile":openModal("profile");break;
   case "printMinutes":printMinutes(mid);break;
+  case "previewEvidence":await previewEvidence(b.dataset.objectPath);break;
   case "downloadEvidence":await downloadEvidence(b.dataset.objectPath);break;
   case "submitMinutes":if(await confirmAction("ส่งรายงานฉบับร่างให้ผู้บริหารตรวจทาน?"))await runMutation("r2_submit_minutes",{p_meeting_id:mid},"ส่งรายงานให้ตรวจทานแล้ว");break;
  }
@@ -450,6 +530,16 @@ function main(){
   if(["SIGNED_IN","SIGNED_OUT","TOKEN_REFRESHED"].includes(event)){
     clearTimeout(authChangeTimer);authChangeTimer=setTimeout(()=>bootstrap(),250);
   }
+ });
+ const evidencePreview=$("evidencePreview");
+ evidencePreview.addEventListener("click",ev=>{if(ev.target===evidencePreview)evidencePreview.close();});
+ evidencePreview.addEventListener("close",clearEvidencePreview);
+ $("closeEvidencePreview").addEventListener("click",()=>evidencePreview.close());
+ $("previewCloseFooter").addEventListener("click",()=>evidencePreview.close());
+ $("previewDownload").addEventListener("click",()=>{
+  if(!previewFile)return;
+  const entry=authorizedEvidence(previewFile.path);
+  if(entry)downloadBlob(previewFile.blob,entry.original_name||"evidence");
  });
  $("workspace").addEventListener("click",actionClick);
  $("workspace").addEventListener("change",ev=>{
