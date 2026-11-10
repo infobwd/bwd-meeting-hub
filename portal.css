@@ -73,3 +73,59 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e9edf4;
 footer{text-align:center;background:#e9eef5;color:#7d8ca1;font-size:11px;padding:13px}
 @media(max-width:700px){.top{height:67px;padding:0 12px}.mark strong{font-size:13px}.mark small{font-size:10px}.account{font-size:10px}main{padding:19px 12px 48px}h1{font-size:23px}.center-card{padding:23px 19px;margin:5vh auto}.row-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:1fr}.panel{padding:15px}.tabs .tab{flex:1;min-width:90px}.card-head{flex-wrap:wrap}}
 @media print{.top,.tabs,.actions,footer,.notice-box,button{display:none!important}main{width:100%;padding:0}.panel{box-shadow:none;border:0}}
+
+
+/* R2 mobile-first shell — tablet and phone, without changing Supabase permissions. */
+html{-webkit-text-size-adjust:100%}
+.tab-icon,.tab-short{display:none}
+#modalTitle:focus{outline:none}
+.toast-region{position:fixed;z-index:1200;top:calc(18px + env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));width:min(420px,calc(100vw - 32px));pointer-events:none}
+.toast{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border-radius:14px;background:#fff;color:#21415f;border:1px solid #cbded5;box-shadow:0 14px 40px #0b26452e;font-size:14px;pointer-events:auto;animation:toast-enter .2s ease-out}
+.toast-success{border-left:4px solid #32825b}.toast-error{border-left:4px solid #c4513d}
+.toast-symbol{flex:none;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;font-weight:700;color:#fff;background:#32825b}
+.toast-error .toast-symbol{background:#c4513d}
+.toast-message{flex:1;overflow-wrap:anywhere;line-height:1.5}
+.toast-close{border:0;background:transparent;color:#49627a;min-width:32px;min-height:32px;font-size:23px;line-height:1;display:grid;place-items:center;border-radius:8px}
+.toast-close:focus-visible{outline:3px solid #efc64a}
+@keyframes toast-enter{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.confirm-dialog{width:min(440px,calc(100vw - 32px));max-height:85dvh;border:0;border-radius:20px;padding:24px;box-shadow:0 28px 75px #102b4666}
+.confirm-dialog p{margin:16px 0 22px;white-space:pre-wrap}
+.confirm-actions{display:flex;justify-content:flex-end;gap:12px}
+.confirm-actions .button{min-height:44px;min-width:94px}
+@media(max-width:900px){
+  body{min-width:320px;background:#f4f7fb}
+  .top{height:auto;min-height:70px;padding:10px 14px;gap:8px}
+  .top .mark{min-width:0;flex:1}
+  .top .mark small{display:none}
+  .account{min-width:0;gap:7px}
+  #accountName{max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #logout{min-height:44px;padding:7px 10px;max-width:95px}
+  main{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+  .workspace-head{align-items:flex-start;gap:6px}
+  .workspace-head h1{font-size:clamp(22px,5vw,28px)}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0;padding:8px 12px calc(9px + env(safe-area-inset-bottom));background:#fff;border:1px solid #e1e9f2;border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -7px 30px #1836581c}
+  .tabs .tab{min-width:0;min-height:56px;padding:5px 3px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;border-radius:13px;font-size:12px;line-height:1.3;color:#61758e}
+  .tabs .tab.current{background:#e7f0fb;color:#103d73;font-weight:600}
+  .tab-icon,.tab-short{display:inline}
+  .tab-icon{font-size:22px;line-height:1.1}
+  .tab-long{display:none}
+  .button{min-height:44px}
+  .button.small{min-height:44px;padding:9px 12px}
+  .filter,.field input,.field select,.field textarea,.center-card input{font-size:16px}
+  .filter{max-width:100%;width:100%}
+  .panel{border-radius:18px}
+  .row-grid{gap:10px}
+  .metric{padding:14px}
+  #modal.form-sheet{position:fixed;inset:auto 0 0 0;margin:0;width:100%;max-width:100%;height:auto;max-height:88dvh;max-height:88svh;border:0;border-radius:24px 24px 0 0;padding:0;overflow:hidden;box-shadow:0 -10px 55px #09274940}
+  #modal.form-sheet form{display:flex;flex-direction:column;max-height:88dvh;max-height:88svh;min-height:0}
+  #modal.form-sheet .modal-head{position:relative;margin:0;padding:27px 20px 14px;flex:none;border-bottom:1px solid #edf1f6}
+  #modal.form-sheet .modal-head:before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);height:5px;width:42px;border-radius:99px;background:#cbd5e0}
+  #modal.form-sheet #modalFields{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;padding:5px 20px 16px;-webkit-overflow-scrolling:touch}
+  #modal.form-sheet .modal-actions{margin:0;padding:12px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #edf1f6;background:#fff;flex:none}
+  #modal.form-sheet .modal-actions #submitModal{flex:1;min-height:48px}
+  #modal.form-sheet .modal-actions #cancelModal{min-height:48px;min-width:88px}
+  .toast-region{top:auto;right:12px;left:12px;bottom:calc(88px + env(safe-area-inset-bottom));width:auto;max-width:none}
+  .toast{padding:12px 13px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){.toast{animation:none}}
+@media print{.toast-region,.confirm-dialog{display:none!important}}
