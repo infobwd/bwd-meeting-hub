@@ -36,7 +36,7 @@ test("UX-10 photo gallery is two columns and lists real verified metadata from R
 test("UX-10 selected gallery photo fills cover link and preserves explicit save",()=>{
  assert.match(js,/function chooseGalleryCover\(fileId\)/);
  assert.match(js,/field\.value="https:\/\/drive\.google\.com\/file\/d\/"/);
- assert.match(js,/if\(confirmed\)confirmed\.checked=true/);
+ assert.match(js,/if\(confirmed\)confirmed\.checked=false/);
  assert.match(js,/method="r2_set_meeting_cover"/);
  assert.match(js,/if\(!isEditor\(m\.id\)\)/);
  const malicious=galleryCard({drive_file_id:"abcdefghijklmnop1234",file_name:'<img onerror="alert(1)">'});
