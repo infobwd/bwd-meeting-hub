@@ -117,3 +117,16 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - Internal thresholds: 70% watch, 85% escalate, 95% critical review, by individual meter. Threshold actions are manual/planned **not enabled automated enforcement**.
 - Mandatory release gate: official dashboard Usage review, protected external backup + restore test, 7-day inactivity pause recovery plan, upload and retention policies, RLS/live-account acceptance. No secret or personal data in public repository.
 - R3 reminders must respect Edge/Realtime quotas, opt-in and deduplication; do not add high-frequency background polling or a synthetic keep-alive.
+
+## 13. UX-07 — Mobile Display Polish & Task Experience (2026-11-10)
+- [x] Compact signed-in header: accessible account dropdown retains the original logout action.
+- [x] Prioritize assigned tasks on overview; balance three key metrics in phone layout while preserving the three destination tabs.
+- [x] Compact task summary, move meeting origin inside details, and separate evidence/history into collapsed, accessible sub-panels; independent review and task version RPC stay unchanged.
+- [x] Task update dialog selects currently saved status (where editable) instead of defaulting to "doing", and shows status-specific plain-Thai guidance for in-progress, blocked and submitted.
+- [x] Position compact success/error toast above bottom navigation; keep dismiss button and accessible status roles.
+- [x] Use "หัวข้อย่อย" for agenda jump count, display "(ร่างรายงาน)" once as a status badge instead of duplicate title suffix in the UI (database title unchanged).
+- [x] Expose fit-width, full-page and zoom controls directly in PDF.js reader with in-session fit preference; leave Google Drive fallback private.
+- [x] Replace technical notification copy with plain Thai; **no automated notification delivery introduced**.
+- [x] Add UX-07 automated source and isolated rendering tests.
+- [ ] iOS/Android real-device UAT, role-based checks and production privacy sign-off; automated CI is not production acceptance.
+- **Scope:** frontend + docs + tests only. No Supabase data/RLS, stored meeting title, task state, document sharing, or decision/approval state changed.
