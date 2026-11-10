@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.9 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.10 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -241,3 +241,11 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Only authorized meeting-editor staff may create separated append-only agenda/minutes draft snapshots; independent admin can review, but DOC-02 cannot ratify, sign, officially issue or auto-assign meeting outcomes. Draft A4 visual preview is watermark-marked and linked to source agenda records; legacy report state remains distinct.
 - [ ] Still pending: independently authenticated multi-role security tests, real iPhone/Android and PDF/A4 layout proof, school appointment-order/acting-chair and committee-procedure verification, backup/restore, protected Drive rights, and formal DOC-03 sign/ratification/export. No official school acceptance implied by GitHub Pages success.
 - Follow-up details: [DOC-02 acceptance](R2_DOC02_TWO_DOCUMENT_DRAFTS_ACCEPTANCE_20261110.md). Subsequent work should prioritize **secretary-led DOC-02 mobile/document acceptance** and **DOC-03 design/security approval** before enabling authoritative output; EXT-03 external-to-internal topic/task continuity remains independently scoped.
+
+## 26. DOC-02 mobile UX refinement and iPhone screenshot findings (2026-11-10)
+- [x] [UI impact plan](R2_DOC02_MOBILE_UX_REFINEMENT_PLAN_20261110.md) **recorded before source changes**. Root causes: mobile 47%/53% vertically split panes leave blank space and make A4 preview hard to reach; display prefixes create doubled `5.2 — 5.2` labels; long A4 drafts lack clear draft-page boundaries.
+- [x] [Mobile refinement acceptance](R2_DOC02_MOBILE_UX_REFINEMENT_ACCEPTANCE_20261110.md): DOC-02 mobile/tablet now uses a `แก้ไขข้อมูล / พรีวิว A4` toggle with one visible pane and reachable save actions; desktop keeps two-pane layout. Status/legacy minutes chip compact and separately labeled. Button label shortened to `บันทึกร่าง`; meeting number needs a verified source, never inferred from unapproved notes.
+- [x] **Render-only de-duplication:** `item.title` that starts with its matching displayed section-local number no longer repeats it. No change to stored agenda title, position, section or 13 existing five-group records. All document versions remain separate and old minutes revision 4 `submitted` is never overwritten by these UI changes.
+- [x] Draft A4 preview shows approximate page boundaries and repeated not-ratified watermark; each agenda item kept whole, exceptionally long items allowed to expand instead of clipping. **Not an official print/PDF paginator:** final physical A4, signatures, certification, issue/distribution remain gated DOC-03.
+- [ ] Automated Node CI / PR / Pages and human device sign-off must be recorded separately, with real iPhone Safari / Android Chrome and long, multi-page Thai-language content. No schema migrations, data writes, user invitations or Drive ACL changes in this slice. Legacy EXT-02 remains available.
+- **Next:** inspect UI on phone and verify the 5.2 label, report editor save, and multi-page preview with real authorized test account (without changing board meeting data); then schedule DOC-03 design/approval separately.
