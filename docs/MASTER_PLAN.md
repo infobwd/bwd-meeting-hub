@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.0 | 2026-11-10 | Status: R2 code implemented; Supabase provisioning and multi-role acceptance pending
+Version: 0.2.1 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -103,6 +103,9 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - **UX-02 meeting hierarchy implemented (device QA pending):** [docs/R2_UX02_MEETING_AGENDA_ACCEPTANCE.md](R2_UX02_MEETING_AGENDA_ACCEPTANCE.md). Accurate backend-derived meeting state labels; five expandable agenda groups (13-item sample fully preserved); page anchors for documents/minutes/tasks/attendees; return-to-list scroll preservation. No backend or Drive permission changes. Next code slice: UX-03 task actions/evidence density.
 - **UX-03 task cards implemented (multi-role/device QA pending):** [docs/R2_UX03_TASK_CARDS_EVIDENCE_ACCEPTANCE.md](R2_UX03_TASK_CARDS_EVIDENCE_ACCEPTANCE.md). Task owner/due/status first, at most one primary action; secondary controls, uploads, previews and history in a native disclosure; reviewer and self-approval separation preserved. No Supabase or Drive changes. Next code slice UX-04 forms/Toast/loading/retry.
 - **UX-04 forms/loading implemented (iPhone/device QA pending):** [docs/R2_UX04_FORMS_LOADING_ACCEPTANCE.md](R2_UX04_FORMS_LOADING_ACCEPTANCE.md). Keyboard-aware Bottom Sheet, dirty-form discard confirmation, one-at-a-time Save, inline errors, skeleton/loading with retry and accurate save-vs-refresh Toast. Private state cleared on signout. No backend/Drive/PDF reader changes; next UX-05 viewer and UX-06 device/role acceptance.
+- **UX-05 PDF reader implementation and mock acceptance:** [docs/R2_UX05_READER_ACCEPTANCE.md](R2_UX05_READER_ACCEPTANCE.md). Explicit hidden/fallback panes, accessible reader mode, keyboard paging and mobile focus/viewport improvements; no authorization or Drive sharing changes. Real-device PDF.js and Drive access tests pending.
+- **UX-06 automated regression / live release gate:** [docs/R2_UX06_RELEASE_VERIFICATION.md](R2_UX06_RELEASE_VERIFICATION.md). Existing role/RLS/privacy/UI contracts retained; meeting/document counts checked read-only. Full iPhone/Android/iPad, independent accounts, storage negative tests and privacy/backup sign-off remain mandatory before official production acceptance.
+- **R3 remains separate:** no real reminder delivery has been enabled, including post-event thank-you letter follow-ups.
 - Compared `infobwd/tdrs` main application shell, bottom nav and bottom sheet, responsive typography/iOS zoom prevention, theme tokens, mobile dashboard, skeletons, toast, and PWA update UX.
 - Continue to use Nongkum Sports PDF.js reader as the **document-reader behavior reference**, while TDRS informs the app-wide visual and mobile interaction treatment.
 - Ordered gates: UX-00 current-screen audit → UX-01 app shell → UX-02 meetings → UX-03 tasks → UX-04 forms/status → UX-05 PDF viewer → UX-06 device/accessibility/role acceptance; optional UX-07 (PWA/theme) separately.

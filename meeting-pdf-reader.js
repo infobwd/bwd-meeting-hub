@@ -13,7 +13,7 @@ if(!dialog)return;
 const ui={
   close:$("readerClose"),title:$("readerTitle"),notice:$("readerNotice"),menu:$("readerTools"),
   drive:$("readerDrivePane"),frame:$("readerDriveFrame"),open:$("readerOpenDrive"),
-  source:$("readerSource"),local:$("readerLocalPdf"),driveButton:$("readerBackDrive"),
+  source:$("readerSource"),mode:$("readerMode"),local:$("readerLocalPdf"),driveButton:$("readerBackDrive"),
   localPane:$("readerCanvasPane"),canvasHost:$("readerCanvasHost"),canvas:$("readerCanvas"),
   status:$("readerStatus"),pageBar:$("readerPageBar"),page:$("readerPage"),
   total:$("readerTotal"),prev:$("readerPrev"),next:$("readerNext"),
@@ -26,6 +26,7 @@ function showDrive(reason=""){
   if(current?.id)ui.frame.src="https://drive.google.com/file/d/"+encodeURIComponent(current.id)+"/preview";
   ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;
   ui.driveButton.hidden=true;ui.source.textContent="อ่านผ่าน Google Drive";
+  ui.mode.textContent="ตัวอ่าน Google Drive (ตามสิทธิ์บัญชีของคุณ)";
   ui.menu.open=false;
   message(reason||"ดู PDF ผ่าน Google Drive ตามสิทธิ์บัญชี Google ของคุณ");
   updateToolbar();
@@ -34,7 +35,9 @@ function showBook(source){
   ui.frame.src="about:blank";
   ui.drive.hidden=true;ui.localPane.hidden=false;ui.pageBar.hidden=false;
   ui.driveButton.hidden=false;ui.source.textContent=source;
+  ui.mode.textContent=source;
   ui.menu.open=false;
+  updateToolbar();
 }
 async function clearPdf(){
   ++renderId;
@@ -52,7 +55,7 @@ function reset(){
   ui.local.value="";
   clearPdf().catch(()=>{});
   ui.drive.hidden=false;ui.localPane.hidden=true;ui.pageBar.hidden=true;
-  ui.source.textContent="";message("");
+  ui.source.textContent="";ui.mode.textContent="";message("");
   ui.canvas.style.transform="";ui.canvas.style.transformOrigin="";
   ui.menu.open=false;
   const focus=lastFocus;lastFocus=null;
@@ -69,6 +72,7 @@ function open({driveFileId,title,documentType,loadPdf}={}){
     documentType==="agenda_draft"?"ร่างระเบียบวาระ":
     documentType==="minutes_draft"?"ร่างรายงานการประชุม":"เอกสารประกอบ";
   ui.notice.textContent=typeLabel+" • ฉบับร่าง ยังไม่ใช่มติหรือรายงานที่รับรองแล้ว";
+  ui.mode.textContent="กำลังเตรียมตัวอ่านเอกสาร";
   ui.open.href="https://drive.google.com/file/d/"+encodeURIComponent(driveFileId)+"/view";
   ui.frame.src="about:blank";
   dialog.showModal();
@@ -210,6 +214,18 @@ ui.driveButton.addEventListener("click",()=>backToDrive().catch(()=>{}));
 ui.prev.addEventListener("click",()=>setPage(page-1));
 ui.next.addEventListener("click",()=>setPage(page+1));
 ui.page.addEventListener("change",()=>setPage(ui.page.value));
+// Keyboard page navigation belongs to the document viewport, not form fields or toolbar controls.
+ui.canvasHost.addEventListener("keydown",event=>{
+  if(!pdf||event.altKey||event.ctrlKey||event.metaKey)return;
+  const delta={ArrowLeft:-1,ArrowRight:1,PageUp:-1,PageDown:1};
+  if(Object.prototype.hasOwnProperty.call(delta,event.key)){
+    event.preventDefault();setPage(page+delta[event.key]);
+  }else if(event.key==="Home"){
+    event.preventDefault();setPage(1);
+  }else if(event.key==="End"){
+    event.preventDefault();setPage(pdf.numPages);
+  }
+});
 ui.fitWidth.addEventListener("click",()=>{fit="width";zoom=1;updateToolbar();render().catch(()=>{});});
 ui.fitPage.addEventListener("click",()=>{fit="page";zoom=1;updateToolbar();render().catch(()=>{});});
 ui.zoomIn.addEventListener("click",()=>setZoom(zoom+.2));

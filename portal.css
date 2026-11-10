@@ -161,7 +161,7 @@ html{-webkit-text-size-adjust:100%}
 @media print{.evidence-preview{display:none!important}}
 
 /* R2 meeting PDF reader — same reading rhythm as Nongkum Sports V2/V3.
-   Private Drive PDF stays in Drive; PDF.js mode only reads local file bytes. */
+   PDF.js fetches authorized PDF bytes via the existing RLS-gated adapter; Drive preview remains the fallback. */
 dialog.meeting-reader{position:fixed;inset:0;margin:auto;width:min(1120px,calc(100vw - 24px));height:min(94dvh,950px);max-width:none;max-height:none;overflow:hidden;padding:0;border:0;border-radius:18px;background:#f3f6fb;color:#173653;box-shadow:0 30px 80px #071c3b70}
 dialog.meeting-reader::backdrop{background:#071a33cf}
 .meeting-reader .reader-shell{height:100%;min-height:0;display:flex;flex-direction:column}
@@ -467,3 +467,36 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
 }
 @media(prefers-reduced-motion:reduce){.ux04-skeleton{animation:none}}
 @media print{.ux04-loading,.ux04-load-error,#modal.form-sheet{display:none!important}}
+
+
+/* UX-05 — in-app reading clarity, visible focus and predictable fallback on small screens.
+   Explicit hidden styles are required because the flex layout otherwise overrides [hidden]. */
+.meeting-reader .reader-drive-pane[hidden],
+.meeting-reader .reader-canvas-pane[hidden],
+.meeting-reader .reader-pagebar[hidden]{display:none!important}
+.meeting-reader .reader-tools:not([open]) .reader-menu{display:none}
+.meeting-reader .reader-mode{margin:0;padding:7px 15px;background:#eef4fa;border-bottom:1px solid #d4e0ef;color:#234d72;font-size:12px;line-height:1.5;flex:none;overflow-wrap:anywhere}
+.meeting-reader :is(button,summary,a,input,.reader-canvas-host):focus-visible{outline:3px solid #e3ac17;outline-offset:2px}
+.meeting-reader .reader-tools-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.meeting-reader .reader-tools-grid button:nth-child(3){grid-column:1}
+.meeting-reader .reader-tools-grid span{grid-column:span 2;white-space:normal;font-size:12px}
+.meeting-reader .reader-tools-grid button:nth-child(5){grid-column:4}
+.meeting-reader .reader-tools-grid button{min-width:0;min-height:44px}
+.meeting-reader .reader-pagebar button{min-height:44px;touch-action:manipulation}
+.meeting-reader .reader-canvas-host{outline-offset:-3px}
+.meeting-reader .reader-title{overflow-wrap:anywhere}
+@media(max-width:900px){
+ dialog.meeting-reader{height:100svh;height:100dvh}
+ .meeting-reader .reader-back span{display:inline;font-size:0}
+ .meeting-reader .reader-back span::after{content:"กลับ";font-size:13px}
+ .meeting-reader .reader-header{min-height:58px}
+ .meeting-reader .reader-pagebar{gap:6px;justify-content:space-between}
+ .meeting-reader .reader-pagebar input{min-height:44px}
+}
+@media(max-width:380px){
+ .meeting-reader .reader-back{padding-inline:8px}
+ .meeting-reader .reader-pagebar button{min-width:59px;font-size:12px}
+ .meeting-reader .reader-pagebar input{width:49px}
+}
+@media(prefers-reduced-motion:reduce){.meeting-reader *{scroll-behavior:auto!important}}
+@media print{.meeting-reader .reader-mode{display:none!important}}
