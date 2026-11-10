@@ -27,6 +27,31 @@ $fn$;
 revoke all on function public.r2_task_assignee_options(uuid) from public,anon;
 grant execute on function public.r2_task_assignee_options(uuid) to authenticated;
 
+
+-- Same active-member directory for authorized meeting editors creating new tasks.
+create or replace function public.r2_meeting_assignee_options(p_meeting_id uuid)
+returns table(user_id uuid,display_name text,member_role text)
+language plpgsql security definer set search_path=''
+as $fn$
+begin
+  if auth.uid() is null or not private.can_edit_meeting(p_meeting_id)
+    then raise exception 'Editor only'; end if;
+  return query
+  select wm.user_id,
+    coalesce(nullif(btrim(p.display_name),''),
+             nullif(btrim(u.email),''),
+             'บัญชีที่ยังไม่ระบุชื่อ')::text as display_name,
+    wm.role::text as member_role
+  from public.workspace_members wm
+  left join public.profiles p on p.id=wm.user_id
+  left join auth.users u on u.id=wm.user_id
+  where wm.active and wm.role in ('admin','secretary','member')
+  order by display_name,wm.user_id;
+end;
+$fn$;
+revoke all on function public.r2_meeting_assignee_options(uuid) from public,anon;
+grant execute on function public.r2_meeting_assignee_options(uuid) to authenticated;
+
 -- Withdraw only your own still-submitted task, never an approved/cancelled/reviewed one.
 -- Preserve the original submitted history; append a new status change with the reason.
 create or replace function public.r2_withdraw_task_submission(
