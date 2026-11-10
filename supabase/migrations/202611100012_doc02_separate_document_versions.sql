@@ -69,6 +69,10 @@ begin
       or not exists(
         select 1 from public.agendas a where a.meeting_id=p_meeting_id
            and a.id::text=item->>'agenda_id'
+           and (item->>'title') is not distinct from a.title
+           and (item->>'notes') is not distinct from a.notes
+           and (item->>'section') is not distinct from a.section::text
+           and (item->>'position') is not distinct from a.position::text
       )
  ) then return false; end if;
  if (select count(distinct item->>'agenda_id') from jsonb_array_elements(v_items) item)<>v_count
@@ -198,7 +202,8 @@ begin
    then raise exception 'Review reason required or too long'; end if;
  perform 1 from public.meetings where id=p_meeting_id
    and meeting_mode is distinct from 'externally_hosted'
-   and meeting_mode is distinct from 'co_hosted' for update;
+   and meeting_mode is distinct from 'co_hosted'
+   and status not in ('ratified','archived') for update;
  if not found then raise exception 'Meeting not eligible for DOC-02'; end if;
  if p_doc_type='agenda' then
    select revision,document_status,document_fields,recorded_by
