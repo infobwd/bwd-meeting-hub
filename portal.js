@@ -206,6 +206,7 @@ async function loadAssignableMembers(mode,subjectId){
   if(mode==="taskOwner"&&editCtx.taskId!==subjectId)return;
   if(mode==="newTask"&&$("f_meetingId")?.value!==subjectId)return;
   const entries=(data||[]).filter(u=>typeof u.user_id==="string");
+  const oldSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
   const selected=mode==="taskOwner"?state.tasks.find(t=>t.id===subjectId)?.owner_id||"":"";
   select.innerHTML=assigneeOptionMarkup(entries,selected);
   // Never assign an inactive current owner just because an old UUID remains on the task.
@@ -213,6 +214,8 @@ async function loadAssignableMembers(mode,subjectId){
     select.innerHTML+='<option value="'+esc(selected)+'" disabled selected>ผู้รับผิดชอบเดิมไม่พร้อมรับงาน โปรดเลือกใหม่</option>';
   }
   select.disabled=false;
+  // Asynchronous initial options are not a user edit: avoid false discard warnings.
+  if(oldSnapshot===formSnapshot)formSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
   if(help)help.textContent=entries.length<=1?
    "ขณะนี้มีบัญชีบุคลากรที่เปิดใช้งานเพียงบัญชีเดียว คุณครูในทะเบียนส่วนตัวยังไม่ได้รับคำเชิญ":
    "แสดงเฉพาะผู้ใช้งานที่เปิดบัญชีและมีสิทธิ์รับมอบหมายแล้ว";
@@ -904,7 +907,11 @@ async function submitForm(ev){
   case "decision":method="r2_record_decision";args={p_agenda_id:editCtx.agendaId,p_body:g("body",8000)};msg="บันทึกข้อสรุปไว้เพื่อรอรับรอง";break;
   case "minutes":method="r2_save_minutes";args={p_meeting_id:mid,p_body:g("body",8000),p_expected_version:Number(g("version"))};msg="บันทึกรายงานฉบับร่างแล้ว";break;
   case "minutesReview":method="r2_review_minutes";args={p_meeting_id:mid,p_approve:editCtx.approve,p_note:g("note",2000)};break;
-  case "newTask":method="r2_create_task";args={p_meeting_id:g("meetingId",36),p_title:g("title",200),p_owner_id:g("ownerId",36)||null,p_due_on:g("dueOn",10)||null,p_description:g("description",8000),p_agenda_id:g("agendaId",36)||null};
+  case "newTask":
+    if(assigneeLookupLoading||$("f_ownerId")?.disabled){
+      showFormError("โปรดรอรายชื่อบัญชีที่เปิดใช้งานก่อนมอบหมายงาน","ownerId");return;
+    }
+    method="r2_create_task";args={p_meeting_id:g("meetingId",36),p_title:g("title",200),p_owner_id:g("ownerId",36)||null,p_due_on:g("dueOn",10)||null,p_description:g("description",8000),p_agenda_id:g("agendaId",36)||null};
     if(args.p_agenda_id&&agenda(args.p_agenda_id)?.meeting_id!==args.p_meeting_id){
       showFormError("วาระต้องอยู่ในการประชุมที่เลือก","agendaId");return;
     }break;
