@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.12 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.13 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -258,3 +258,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [ ] **Rebased branch CI / PR / Pages** must be verified against the latest source-correction code. The original isolated branch passed CI run 313, but this status alone does not validate integration. Real iPhone Safari / Android Chrome and long, multi-page Thai-language content remain separate acceptance gates. No schema migrations, data writes, user invitations or Drive ACL changes in this slice. Legacy EXT-02 remains available.
 - **Next:** inspect UI on phone and verify the 5.2 label, report editor save, and multi-page preview with real authorized test account (without changing board meeting data); then schedule DOC-03 design/approval separately.
 - **Integration with corrected agenda source:** PR #36/#37/#40 have already established 14 stored / 13 active / 1 retired agenda topics and an earlier DOC-02 draft revision 1. This UI slice preserves the retired row and existing `sameSource`/`alignDraftToSource` source-change confirmation. No new draft or meeting data is created by the UI changes.
+
+## 28. DOC-02 mobile refinement release verification (2026-11-10)
+- [x] UI PR [#41](https://github.com/infobwd/bwd-meeting-hub/pull/41) merged at `4b64c70321257763e773cf3986042d9e87566ee3`. Rebased feature CI run **323**, PR check run **324**, `main` checks run **325** and GitHub Pages deployment run **33** all succeeded.
+- [x] Verified DOM/UI includes one-pane mobile `แก้ไขข้อมูล / พรีวิว A4`, accessible zoom, compact independent document states, readable draft A4 approximate page splitting, duplicate 5.2 heading suppression and verified-number guidance. Existing source-correction `sameSource`/`alignDraftToSource` guards retained. No schema migration/meeting write in this change.
+- [x] Read-only Supabase snapshot: **14 stored / 13 active / 1 retired** agenda rows, five active sections, legacy minutes revision 4 `submitted`, 2 DOC-02 agenda drafts, 1 DOC-02 minutes draft and **0 formal ratifications**. Counts of private drafts can change with authorized user activity; the frontend PR did not create or edit them.
+- [ ] **Actual acceptance not complete:** iPhone Safari and Android Chrome manual testing of editing, saved revisions, screen zoom, keyboard/safe area, 13 real visible items, multipage Thai A4 and old draft reconciliation; independent-account RLS, confidential Drive permissions and certified PDF/signature/committee ratification remain gated for DOC-03.
+- See [DOC-02 mobile refinement acceptance](R2_DOC02_MOBILE_UX_REFINEMENT_ACCEPTANCE_20261110.md). Future UX fixes must preserve the audited historical retired agenda entry and distinct review/ratification states.
