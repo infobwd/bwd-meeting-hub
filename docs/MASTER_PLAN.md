@@ -152,3 +152,17 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [ ] **Manual acceptance:** verify history text wrapping and cover preview from a real iPhone/Android, with access-restricted Google Drive image and a second authorized account. Google Drive's cross-origin thumbnail is not guaranteed for private media.
 - **Important:** the browser cannot verify a private Drive file's MIME type without Drive OAuth/API access. Requiring the editor to inspect and confirm the original prevents accidental acceptance but is not automated MIME verification.
 - **No Supabase schema, stored meeting cover, task update history, approval states, or Google Drive ACLs changed.**
+
+## 16. UX-10 — Drive Photo Gallery & Compact Overview (2026-11-10)
+- [x] Inspected the existing Drive folder for the school-board meeting of 10 Nov 2026. Confirmed 10 JPEGs in `ภาพประกอบการประชุม_10-11-2569`, not merely PDFs or the original letter scan.
+- [x] Added `meeting_photo_catalog`, a metadata-only, RLS-scoped catalog readable only to users who may view that meeting. Only the backend may alter metadata; public/anon read is revoked.
+- [x] Linked the verified Drive folder to the existing school-board meeting via business attributes, avoiding hard-coded generated meeting UUIDs. Loaded 10 verified photo names, MIME types and file IDs; **none is automatically set as the cover**.
+- [x] Built mobile two-column photo gallery inside the current cover editor, with thumbnail, accessible filename, one-tap selection and confirmation via the existing audited `r2_set_meeting_cover` RPC. Manual Drive URL selection remains an alternative.
+- [x] Added restricted `meeting-photo-sync` Edge Function which validates user JWT, active workspace membership, meeting RLS and admin/editor role before listing only the configured Drive folder. It requires an independently managed Google service-account credential and never stores image bytes in Supabase.
+- [x] Added folder settings RPC for meetings created later; no blanket Google Drive folder scanning.
+- [x] Simplified the overview task card. The full evidence, history and review controls remain available on the full Tasks page.
+- [x] Added UX-10 regression tests, refreshed CSS/JS assets and recorded a manual sync setup/runbook.
+- [x] Supabase migration executed; catalog readback confirmed 10 items, 1 configured folder, and no anon SELECT access. Edge deployed with JWT enforcement; automated smoke/security test passed.
+- [ ] **Google Drive live sync requires** setting secret `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` in Supabase Edge Function Secrets and sharing the chosen Drive folder with the service-account email. The assistant has not provisioned that secret; until then the 10 reviewed gallery items work, while “ดึงภาพใหม่จาก Drive” reports that automatic sync is not configured.
+- [ ] Real-device iPhone / Android image rendering, restricted-Drive second-user rights, and manual school acceptance.
+- **No photos publicly exposed, no changes to Google Drive sharing, no meeting-status approval/ratification changes, and no actual meeting cover selected automatically.**
