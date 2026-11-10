@@ -17,7 +17,7 @@ const state={
   page:"overview",activeMeeting:null,meetingListScroll:0,taskFilter:"all",agendaOpen:{},taskDetailsOpen:{},loading:false,loadError:""
 };
 const modal=$("modal"), actionForm=$("actionForm");
-let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus,formSnapshot="",formSubmitting=false;
+let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus,formSnapshot="",formSubmitting=false,discardPromptActive=false;
 let previewObjectUrl=null,previewFile=null,previewReturnFocus=null,previewRequestId=0;
 const meetingStates={
   draft:{label:"ฉบับร่าง",tone:"gold"},
@@ -160,7 +160,7 @@ function isFormDirty(){
 function fitModalViewport(){
  if(!modal.open||!window.visualViewport||!window.matchMedia("(max-width: 900px)").matches)return;
  const view=window.visualViewport;
- const available=Math.max(220,Math.floor(view.height-12));
+ const available=Math.max(170,Math.floor(view.height-12));
  const bottom=Math.max(0,Math.round(window.innerHeight-view.height-view.offsetTop));
  modal.style.setProperty("--ux04-sheet-height",available+"px");
  modal.style.setProperty("--ux04-sheet-bottom",bottom+"px");
@@ -198,9 +198,14 @@ async function closeModal({force=false}={}){
  if(!modal.open)return;
  if(formSubmitting&&!force)return;
  if(!force&&isFormDirty()){
-   if(!await confirmAction("มีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดโดยไม่บันทึกหรือไม่?"))return;
+   if(discardPromptActive)return;
+   discardPromptActive=true;
+   let discard=false;
+   try{discard=await confirmAction("มีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดโดยไม่บันทึกหรือไม่?");}
+   finally{discardPromptActive=false;}
+   if(!discard)return;
  }
- modal.close();
+ if(modal.open)modal.close();
 }
 async function confirmAction(message){
   const dialog=$("confirmDialog");
@@ -299,7 +304,7 @@ function openModal(mode,ctx={}){
  }else{return;}
  $("modalTitle").textContent=label;$("modalFields").innerHTML=body;
  clearFieldErrors();
- formSubmitting=false;
+ formSubmitting=false;discardPromptActive=false;
  formSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
  $("submitModal").disabled=false;$("submitModal").textContent="บันทึก";
  modalReturnFocus=document.activeElement;
@@ -547,6 +552,7 @@ async function submitForm(ev){
  const mode=editMode;
  $("submitModal").disabled=true;
  $("submitModal").textContent="กำลังบันทึก…";
+ $("submitModal").setAttribute("aria-busy","true");
  let method=null,args=null,msg="บันทึกเรียบร้อย";
  try{
  switch(mode){
@@ -584,6 +590,7 @@ async function submitForm(ev){
   formSubmitting=false;
   $("submitModal").disabled=false;
   $("submitModal").textContent="บันทึก";
+  $("submitModal").removeAttribute("aria-busy");
  }
 }
 async function uploadEvidence(file,taskId,input){
@@ -805,9 +812,32 @@ function main(){
   if(ev.target.dataset.evidenceUpload){const file=ev.target.files?.[0];if(file)uploadEvidence(file,ev.target.dataset.evidenceUpload,ev.target);}
  });
  modal.addEventListener("click",event=>{if(event.target===modal)closeModal();});
- modal.addEventListener("close",()=>{if(modalReturnFocus?.isConnected)modalReturnFocus.focus({preventScroll:true});modalReturnFocus=null;});
- $("closeModal").addEventListener("click",closeModal);
- $("cancelModal").addEventListener("click",closeModal);
+ modal.addEventListener("cancel",event=>{event.preventDefault();closeModal();});
+ modal.addEventListener("close",()=>{
+   modal.style.removeProperty("--ux04-sheet-height");
+   modal.style.removeProperty("--ux04-sheet-bottom");
+   formSubmitting=false;discardPromptActive=false;
+   if(modalReturnFocus?.isConnected)modalReturnFocus.focus({preventScroll:true});
+   modalReturnFocus=null;
+ });
+ const viewport=window.visualViewport;
+ if(viewport){
+   viewport.addEventListener("resize",fitModalViewport,{passive:true});
+   viewport.addEventListener("scroll",fitModalViewport,{passive:true});
+ }
+ modal.addEventListener("focusin",event=>{
+   if(!event.target?.matches?.("input,select,textarea"))return;
+   window.setTimeout(()=>{
+     if(!modal.open)return;
+     fitModalViewport();
+     event.target.scrollIntoView({block:"nearest",behavior:"auto"});
+   },100);
+ });
+ $("closeModal").addEventListener("click",()=>closeModal());
+ $("cancelModal").addEventListener("click",()=>closeModal());
+ actionForm.addEventListener("input",event=>{
+   if(event.target?.matches?.("input,select,textarea"))clearFieldErrors();
+ });
  actionForm.addEventListener("submit",submitForm);
  bootstrap();
 }
