@@ -107,7 +107,8 @@ function meetingDocumentMarkup(d){
   const href="https://drive.google.com/file/d/"+encodeURIComponent(d.drive_file_id)+"/view";
   return '<div class="item"><h3>'+esc(d.title)+'</h3>'+
     '<p><span class="status gold">'+esc(labels[d.document_type]||"เอกสารประกอบ")+'</span> <span class="mini">ฉบับร่าง — ยังไม่รับรอง</span></p>'+
-    '<div class="actions"><a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิด PDF ใน Google Drive</a></div></div>';
+    '<div class="actions">'+button("อ่าน PDF ในเว็บ","readMeetingPdf",{"document-id":d.id},"primary")+
+    '<a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิดใน Google Drive</a></div></div>';
 }
 function closeModal(){if(modal.open)modal.close();}
 async function confirmAction(message){
@@ -543,6 +544,13 @@ async function actionClick(ev){
   case "rejectMinutes":openModal("minutesReview",{meetingId:mid,approve:false});break;
   case "profile":openModal("profile");break;
   case "attachDriveDoc":openModal("driveDoc",{meetingId:mid});break;
+  case "readMeetingPdf":{
+    const d=state.documents.find(x=>x.id===b.dataset.documentId && state.meetings.some(m=>m.id===x.meeting_id));
+    if(!d)return statusMessage("ไม่พบเอกสารที่คุณมีสิทธิ์เปิดอ่าน",true);
+    if(!window.BWDMeetingPdfReader)return statusMessage("ตัวอ่าน PDF ยังโหลดไม่สำเร็จ โปรดลองรีเฟรชเว็บ",true);
+    window.BWDMeetingPdfReader.open({driveFileId:d.drive_file_id,title:d.title,documentType:d.document_type});
+    break;
+  }
   case "printMinutes":printMinutes(mid);break;
   case "previewEvidence":await previewEvidence(b.dataset.objectPath);break;
   case "downloadEvidence":await downloadEvidence(b.dataset.objectPath);break;
