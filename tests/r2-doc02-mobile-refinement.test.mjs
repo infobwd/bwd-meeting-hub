@@ -101,7 +101,7 @@ test("DOC-02 mobile: compact status and input guidance without changing legacy r
  assert.match(js,/doc02-state-top/);
  assert.match(js,/doc02-legacy-chip/);
  assert.match(js,/รายละเอียดสถานะเอกสาร/);
- assert.match(js,/กรุณาระบุครั้งที่/);
+ assert.match(js,/ยังไม่ระบุครั้งที่/);
  assert.match(js,/placeholder="เช่น 1\/2569 \(ตรวจสอบตามข้อมูลจริง\)"/);
  assert.match(js,/>บันทึกร่าง<\/button>/);
  assert.doesNotMatch(js,/>บันทึกร่างฉบับใหม่<\/button>/);
