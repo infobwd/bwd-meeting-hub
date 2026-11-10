@@ -82,6 +82,8 @@ test("DOC-02 mobile: switches one pane at a time with no percentage-height split
  assert.match(html,/id="doc02ViewSwitch"/);
  assert.match(html,/data-doc02-view="edit"/);
  assert.match(html,/data-doc02-view="preview"/);
+ assert.match(html,/data-doc02-zoom="fit"/);
+ assert.match(html,/data-doc02-zoom="large"/);
  assert.match(html,/id="doc02Editor" class="doc02-editor-scroll"/);
  assert.match(css,/\.doc02-view-switch\{display:flex\}/);
  assert.match(css,/\.doc02-dialog\[data-mobile-view="edit"\] \.doc02-preview-pane\{display:none\}/);
@@ -90,6 +92,8 @@ test("DOC-02 mobile: switches one pane at a time with no percentage-height split
  assert.match(css,/env\(safe-area-inset-bottom/);
  assert.match(css,/\.doc02-editor-scroll\{flex:1/);
  assert.match(js,/function setView\(view\)/);
+ assert.match(js,/function setZoom\(level\)/);
+ assert.match(css,/\.doc02-preview-scroll\[data-zoom="large"\] \.doc02-page/);
  assert.match(js,/previewMarkup\(activeType,captureForm\(\)\)/);
  assert.match(js,/button\.setAttribute\("aria-pressed"/);
  assert.match(html,/portal\.css\?v=doc02ux/);
