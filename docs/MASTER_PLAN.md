@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.10 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.11 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -247,5 +247,5 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - **Design / rollback documented:** [R2 agenda correction plan](R2_AGENDA_SOURCE_CORRECTION_PLAN_20261110.md); no real meeting text, participant names, or private documents in this public repository.
 - **Implementation branch:** additive nullable `agendas.retired_at`, private append-only before/after snapshot and DOC-02 effective-source validator; browser only queries active agendas. Saved DOC-02 versions remain immutable. A stale editable draft can be rebased on the active topic list while retaining author-entered content for unchanged topic IDs; an explicit confirmation is required before saving a new revision.
 - **Data operation is a separately gated step:** one authorized conditional private Supabase transaction after code/migration rollout, keeping the original withdrawn topic (retired, never deleted), preserving all old document revisions and independently submitted legacy minutes. The visible agenda target is 13 active items across the original five groups; physical history may include additional retired rows. No automatic decisions, tasks, ratification or live notifications.
-- [ ] CI, PR review, additive migration, guarded data correction, effective-source count, private audit/snapshot and legacy document integrity verification.
+- [x] PR #36 (feature) and PR #37 (asset refresh) merged; branch checks 295 and 300 passed. Additive migration applied, conditional private correction completed. Read-only verification: 14 stored / 13 active / 1 retired topic in five groups; one protected correction snapshot and 14 audit entries. Prior DOC-02 draft remains version 1; legacy minutes remain version 4 / submitted; meeting remains minutes_review; 0 ratifications/decisions and one task link unchanged. See the execution log in the [correction plan](R2_AGENDA_SOURCE_CORRECTION_PLAN_20261110.md).
 - [ ] Real secretary/admin/unauthorized-account tests, iPhone/Android A4 acceptance, backup/restore and official school sign-off remain required.
