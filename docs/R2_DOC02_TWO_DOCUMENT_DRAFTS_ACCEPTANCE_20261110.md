@@ -53,3 +53,11 @@ Migration `20261110164032 doc02_separate_agenda_minutes_draft_versions_20261110`
 - UI: `doc02.js`, `portal.js`, `portal.css`, `workspace.html`.
 - Regression: `tests/r2-doc02-official-previews.test.mjs`, existing EXT-02/UX-02/UX-11 tests.
 - Feature PR number, CI and GitHub Pages run identifiers are recorded in the final post-merge update.
+
+## Post-merge deployment evidence — 2026-11-10
+- **Feature PR [#34](https://github.com/infobwd/bwd-meeting-hub/pull/34) merged** via squash at commit `71c59b4dc53c080749783ac01b001028019a92da`.
+- Branch smoke and security suite run **280** passed; **main** workflow run **281** passed for the squash-merge commit. GitHub Pages **build/deployment run 28** completed successfully for the same commit.
+- Verified all 8 main paths: `doc02.js`, `portal.js`, `portal.css`, `workspace.html`, migration 012, DOC-02 tests, Master Plan, and this acceptance file.
+- **Post-release Supabase read-only check:** still 1 meeting, 13 agendas, 5 sections, 1 legacy minutes row **version 4 / submitted**, 1 task, 0 DOC-02 agenda drafts, 0 DOC-02 minutes drafts, **0 ratifications**. No corrected agenda item, appointment name, school decision or task was inserted by deployment.
+- Migration `20261110164032 doc02_separate_agenda_minutes_draft_versions_20261110` had already been installed before the front-end Merge. All three new document RPCs deny `anon` execution; authenticated users still require editor/admin, meeting-scope and independent reviewer checks. This **does not substitute for real logged-in multi-role tests**.
+- **Release classification:** code implemented, integrated and Pages build successful. Formal school production acceptance and the legal/committee documents procedure are **not complete**. DOC-03 and EXT-03 remain separate tasks.
