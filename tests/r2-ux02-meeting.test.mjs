@@ -19,7 +19,7 @@ function seed(){
   state.agendas=Array.from({length:13},(_,i)=>({
     id:"agenda-"+i,meeting_id:m.id,section:i<4?1:i<5?2:i<7?3:i<11?4:5,position:i+1,title:"หัวข้อทดสอบ "+(i+1),notes:"รายละเอียดของหัวข้อ "+(i+1)
   }));
-  state.documents=[{id:"doc-1",meeting_id:m.id,drive_file_id:"1tfmxjT_dOcMyaVKd769UV5CM28zod8HS",title:"ร่างมติ",document_type:"proposed_resolution"}];
+  state.documents=[{id:"doc-1",meeting_id:m.id,drive_file_id:"testOnlyDriveDocument_1234567890",title:"ร่างมติ",document_type:"proposed_resolution"}];
   state.decisions=[];state.minutes=[];state.links=[];state.access=[];state.tasks=[];state.profiles=[];state.agendaOpen={};
 }
 
