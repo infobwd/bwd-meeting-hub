@@ -57,6 +57,7 @@ test("DOC-02 minutes preview separates attendee roles and multiple outcomes for 
  f.header.chair="ผู้ปฏิบัติหน้าที่ประธาน (สมมติ)";
  f.header.secretary="กรรมการและเลขานุการ (สมมติ)";
  f.header.recorder="ผู้จดรายงานจริง (สมมติ)";
+ f.header.recorder_office="ตำแหน่งประจำสมมติ";
  f.header.attendees="กรรมการสมมติ";
  f.header.absentees="ไม่มี";
  f.header.other_attendees="ผู้เข้าร่วมสมมติ";
@@ -69,7 +70,7 @@ test("DOC-02 minutes preview separates attendee roles and multiple outcomes for 
  const markup=doc.previewMarkup("minutes",f);
  for(const token of ["รายงานการประชุม (แบบที่ 11)","ผู้มาประชุม","ผู้ไม่มาประชุม","ผู้เข้าร่วมประชุม",
    "ผู้ทำหน้าที่ประธาน","กรรมการและเลขานุการ","ผู้จดรายงานการประชุม","เริ่มประชุมเวลา",
-   "เลิกประชุมเวลา","สาระสำคัญ","เรื่องรับทราบ","มติร่าง","ข้อเสนอที่รอข้อยุติ","งานที่เสนอ",
+   "เลิกประชุมเวลา","ตำแหน่งประจำสมมติ","สาระสำคัญ","เรื่องรับทราบ","มติร่าง","ข้อเสนอที่รอข้อยุติ","งานที่เสนอ",
    "ยังไม่มีหลักฐานรับรองโดยที่ประชุม"]){
    assert.ok(markup.includes(token),"Missing "+token);
  }
@@ -103,6 +104,8 @@ test("DOC-02 browser integration is separate from EXT-02 and old minutes mutatio
  assert.match(html,/id="doc02Dialog"/);
  assert.match(html,/id="doc02Preview"/);
  assert.match(core,/case "doc02Preview"/);
+ assert.match(core,/BWDDoc02\?\.closePrivate/);
+ assert.match(preview,/sessionGeneration/);
  assert.match(core,/BWDDoc02\.open/);
  assert.match(core,/function renderExternalMeeting\(m\)/);
  assert.match(core,/r2_ext_submit_report/);
@@ -133,6 +136,8 @@ test("DOC-02 SQL snapshots are append-only and independent of original 4th submi
  assert.match(sql,/from public,anon,authenticated/);
  assert.match(sql,/to authenticated/);
  assert.match(sql,/private\.doc02_valid_fields/);
+ assert.match(sql,/item->>\x27title\x27/);
+ assert.match(sql,/item->>\x27notes\x27/);
  assert.doesNotMatch(sql,/update\s+public\.(minutes|agendas|meetings|tasks|decisions)\b/i);
  assert.doesNotMatch(sql,/delete\s+from\s+public\./i);
  assert.doesNotMatch(sql,/set\s+document_status\s*=\s*'ratified'/i);
