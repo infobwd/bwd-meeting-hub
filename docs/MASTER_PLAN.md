@@ -130,3 +130,14 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Add UX-07 automated source and isolated rendering tests.
 - [ ] iOS/Android real-device UAT, role-based checks and production privacy sign-off; automated CI is not production acceptance.
 - **Scope:** frontend + docs + tests only. No Supabase data/RLS, stored meeting title, task state, document sharing, or decision/approval state changed.
+
+## 14. UX-08 — Safe mobile footer, Drive meeting cover and full task history (2026-11-10)
+- [x] Fix mobile footer occlusion: reserve fixed-tab safe-area padding on footer outside main, while reducing excess gap under dashboard.
+- [x] Provide optional editor-controlled Google Drive cover file ID on meeting records, with audited RPC, existing meeting SELECT RLS and ID validation; images are not made public or copied into GitHub.
+- [x] Meeting cards and details display a 16:9 Drive thumbnail or fallback. Google Drive sharing permissions remain authoritative; private files not renderable as cross-site thumbnails show a placeholder and an authenticated Drive link.
+- [x] Add full per-task history dialog with 20-row pages, exact count, task_id filter and existing SELECT RLS; no write/approval routes are affected.
+- [x] Reduce account logout button line wrapping and simplify footer wording.
+- [x] Add isolated UI source tests, audit backend contract and test in CI.
+- [x] Applied migration 202611100006_meeting_cover.sql to Supabase Meeting on 2026-11-10 and verified one existing meeting, zero cover images selected, and only authenticated role granted RPC execution. This does not replace live multi-user authorization acceptance.
+- [ ] Choose an actual appropriate image in the permitted Google Drive; none is auto-selected from private school documents.
+- [ ] Live iOS/Android and separate-role acceptance, restricted Drive-photo test, storage quota and privacy approval before official go-live.

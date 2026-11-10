@@ -19,6 +19,9 @@ const state={
 const modal=$("modal"), actionForm=$("actionForm");
 let editMode="", editCtx={},authChangeTimer,toastTimer,modalReturnFocus,formSnapshot="",formSubmitting=false,discardPromptActive=false;
 let previewObjectUrl=null,previewFile=null,previewReturnFocus=null,previewRequestId=0;
+const HISTORY_PAGE_SIZE=20;
+let historyTaskId=null,historyOffset=0,historyTotal=null,historyRequest=0,historyLoading=false,historyReturnFocus=null;
+const historySeen=new Set();
 const meetingStates={
   draft:{label:"ฉบับร่าง",tone:"gold"},
   scheduled:{label:"กำหนดการประชุมแล้ว",tone:""},
@@ -72,6 +75,22 @@ function statusHelp(status){
 function updateTaskStatusHelp(status){
  const node=$("taskStatusHelp");
  if(node)node.textContent=statusHelp(status);
+}
+function meetingCoverMarkup(m){
+ const fileId=String(m?.cover_drive_file_id||"");
+ if(!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)){
+  return '<div class="meeting-cover meeting-cover-empty"><span aria-hidden="true">▧</span><span>ยังไม่มีภาพปกการประชุม</span></div>';
+ }
+ const link="https://drive.google.com/file/d/"+encodeURIComponent(fileId)+"/view";
+ const thumbnail="https://drive.google.com/thumbnail?id="+encodeURIComponent(fileId)+"&sz=w1200";
+ return '<div class="meeting-cover" data-cover-for="'+esc(m.id)+'">'+
+   '<div class="meeting-cover-placeholder">ภาพปกอาจต้องได้รับสิทธิ์ใน Google Drive</div>'+
+   '<img src="'+esc(thumbnail)+'" alt="ภาพประกอบการประชุม" loading="lazy" referrerpolicy="no-referrer">'+
+   '<a class="meeting-cover-drive" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">เปิดภาพใน Drive</a></div>';
+}
+function formatHistoryDate(value){
+ const d=new Date(value||"");
+ return Number.isNaN(d.getTime())?"ไม่ทราบเวลา":new Intl.DateTimeFormat("th-TH",{dateStyle:"medium",timeStyle:"short"}).format(d);
 }
 function meeting(id){return state.meetings.find(m=>m.id===id);}
 function agenda(id){return state.agendas.find(a=>a.id===id);}
@@ -302,6 +321,13 @@ function openModal(mode,ctx={}){
   body='<p class="muted">'+esc(t.title)+'</p>'+
     field("เลือกการประชุม","meetingId",select("meetingId",targets.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")))+
     '<div class="notice-box">เมื่อเชื่อมแล้ว ผู้เข้าร่วมการประชุมใหม่ที่มีสิทธิ์อ่านงานจะเห็นรายละเอียด ความก้าวหน้า และหลักฐานของงานนี้ด้วย โปรดตรวจความเหมาะสมก่อนดำเนินการ</div>';
+ }else if(mode==="coverPhoto"&&m){
+  if(!isEditor(m.id))return statusMessage("บัญชีนี้ไม่มีสิทธิ์เปลี่ยนภาพปก",true);
+  label="ภาพปกการประชุม";
+  const existing=m.cover_drive_file_id?"https://drive.google.com/file/d/"+encodeURIComponent(m.cover_drive_file_id)+"/view":"";
+  body='<p class="muted">'+esc(displayMeetingTitle(m))+'</p>'+
+    '<div class="notice-box">เลือกภาพจาก Google Drive ที่คุณมีสิทธิ์ใช้งาน ผู้ดูการประชุมต้องได้รับสิทธิ์เข้าถึงภาพใน Google Drive ด้วย ไม่ต้องเปลี่ยนเป็นสาธารณะ</div>'+
+    field("ลิงก์ภาพจาก Google Drive","driveUrl",input("driveUrl","url",existing,false,900),"ลบลิงก์ในช่องนี้แล้วกดบันทึก หากต้องการเอาภาพปกออก");
  }else if(mode==="taskNote"&&t){
   label="บันทึกความคืบหน้า";
   body='<p class="muted">'+esc(t.title)+'</p>'+field("บันทึก *","note",textarea("note","",true));
@@ -378,7 +404,7 @@ async function bootstrap(){
   if(error&&error.message!=="Auth session missing!")throw error;
   state.user=user||null;
   if(!user){
-   window.BWDMeetingPdfReader?.close?.();
+   window.BWDMeetingPdfReader?.close?.();closeTaskHistory();
    state.member=null;clearPrivateView();setVisible("loginSection",true);
    setVisible("workspace",false);setVisible("blocked",false);$("logout").hidden=true;$("accountMenu").hidden=true;$("accountMenu").open=false;$("accountName").textContent="";return;
   }
@@ -386,7 +412,7 @@ async function bootstrap(){
   const {data:membership,error:membershipError}=await state.client.from("workspace_members").select("role,active").eq("user_id",user.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(!membership?.active){
-    state.member=null;clearPrivateView();setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
+    closeTaskHistory();state.member=null;clearPrivateView();setVisible("workspace",false);setVisible("blocked",true);setVisible("loginSection",false);return;
   }
   state.member=membership;
   const {data:profile}=await state.client.from("profiles").select("id,display_name").eq("id",user.id).maybeSingle();
@@ -395,7 +421,7 @@ async function bootstrap(){
   setVisible("workspace",true);setVisible("loginSection",false);setVisible("blocked",false);
   await reload();
  }catch(err){
-  state.user=null;state.member=null;clearPrivateView();
+  closeTaskHistory();state.user=null;state.member=null;clearPrivateView();
   setVisible("workspace",false);setVisible("blocked",false);setVisible("loginSection",true);
   $("loginMessage").textContent="ไม่สามารถโหลดข้อมูล: "+friendlyError(err);
  }
@@ -406,6 +432,7 @@ function meetingCard(m){
  const docCount=state.documents.filter(d=>d.meeting_id===m.id).length;
  return '<article class="card meeting-card">'+
    '<div class="meeting-card-head"><span class="meeting-type">'+esc(names[m.kind]||"การประชุม")+'</span>'+meetingStatusLabel(m.status)+'</div>'+
+   meetingCoverMarkup(m)+
    '<h3>'+esc(displayMeetingTitle(m))+'</h3>'+
    '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+(m.location?' · '+esc(m.location):'')+'</p>'+
    '<p class="meeting-counts">'+agendaCount+' วาระย่อย · '+docCount+' เอกสาร · '+taskCount+' ภารกิจ</p>'+
@@ -416,7 +443,7 @@ function taskCard(t,full=false){
  const origin=[...new Set(links.map(l=>{const m=meeting(l.meeting_id);return m?displayMeetingTitle(m):null;}).filter(Boolean))].join(" • ");
  const mine=isOwner(t),reviewer=canReview(t.id);
  const updates=state.updates.filter(u=>u.task_id===t.id);
- const upd=updates.slice(0,full?10:2);
+ const upd=updates.slice(0,2);
  const attachments=state.evidence.filter(e=>e.task_id===t.id);
  const canUpdate=(mine||reviewer)&&!["approved","cancelled","submitted"].includes(t.status);
  const canApprove=reviewer&&!mine&&t.status==="submitted";
@@ -438,11 +465,11 @@ function taskCard(t,full=false){
      '<div class="actions">'+button("ดูตัวอย่าง","previewEvidence",{"object-path":e.object_path},"primary")+
        button("ดาวน์โหลด","downloadEvidence",{"object-path":e.object_path})+'</div></div>').join("")+'</div>':"";
  const history=upd.length?
-   '<div class="task-history"><h4>ประวัติงาน</h4>'+
+   '<div class="task-history"><h4>ประวัติงานล่าสุด</h4>'+
    upd.map(u=>'<div class="feed">'+esc(formatDate((u.created_at||"").slice(0,10)))+' • '+esc(fullName(u.author_id))+
      ' • '+esc(statuses[u.new_status]||u.new_status)+(u.note?'<p>'+esc(u.note)+'</p>':'')+'</div>').join("")+
-   (updates.length>upd.length?'<p class="mini">ยังมีประวัติก่อนหน้านี้อีก '+(updates.length-upd.length)+' รายการ</p>':"")+'</div>':"";
- const countLabel=attachments.length+" ไฟล์ · "+updates.length+" บันทึก";
+   (updates.length>upd.length?'<p class="mini">มีรายการเพิ่มเติม โปรดเปิดดูประวัติทั้งหมด</p>':"")+'</div>':"";
+ const countLabel=attachments.length+" ไฟล์ · ดูประวัติ";
  return '<article class="card task-card" data-task-card="'+esc(t.id)+'">'+
    '<div class="task-card-head"><h3>'+esc(t.title)+'</h3>'+statusLabel(t.status)+'</div>'+
    '<div class="task-meta"><p><span>ผู้รับผิดชอบ</span><strong>'+esc(t.owner_id?fullName(t.owner_id):"ยังไม่มอบหมาย")+'</strong></p>'+
@@ -456,7 +483,7 @@ function taskCard(t,full=false){
        (t.description?'<div class="task-description"><h4>รายละเอียดงาน</h4><p>'+esc(t.description)+'</p></div>':"")+
        (moreActions?'<div class="actions task-more-actions">'+moreActions+'</div>':"")+
        (canUpload||attachments.length?'<details class="task-subdetails"><summary>หลักฐานและไฟล์ ('+attachments.length+')</summary><div class="task-subdetails-body">'+evidenceInput+evidenceList+'</div></details>':"")+
-       (history?'<details class="task-subdetails"><summary>ประวัติความคืบหน้า ('+updates.length+')</summary><div class="task-subdetails-body">'+history+'</div></details>':"")+
+       '<details class="task-subdetails"><summary>ประวัติความคืบหน้า</summary><div class="task-subdetails-body">'+history+button("ดูประวัติทั้งหมด","viewTaskHistory",{"task-id":t.id})+'</div></details>'+
        (!t.description&&!origin&&!moreActions&&!canUpload&&!attachments.length&&!history?'<p class="mini">ยังไม่มีรายละเอียดเพิ่มเติม</p>':"")+
      '</div></details>'+
    '</article>';
@@ -511,6 +538,8 @@ function renderMeeting(m){
    '<h2>'+esc(displayMeetingTitle(m))+'</h2>'+
    '<p class="meeting-date">'+esc(formatDate(m.scheduled_on))+' · '+esc(m.location||"ยังไม่กำหนดสถานที่")+'</p></div>'+
    '<div class="meeting-badges">'+meetingStatusLabel(m.status)+'<span class="role-pill">'+(editable?"แก้ไขได้":"อ่านอย่างเดียว")+'</span></div></header>'+
+   '<div class="meeting-cover-detail">'+meetingCoverMarkup(m)+
+   (editable?'<div class="meeting-cover-tools">'+button(m.cover_drive_file_id?"เปลี่ยนภาพปก":"เลือกภาพปกจาก Google Drive","coverPhoto",{"meeting-id":m.id})+'</div>':"")+'</div>'+
    jump+
    '<div id="bwd-agenda" class="meeting-target">'+
    section("ระเบียบวาระ",agendaControls+agendas,
@@ -531,6 +560,72 @@ function renderMeeting(m){
     editable?button("＋ เพิ่มงาน","newTask",{"meeting-id":m.id},"primary"):"")+
   '</div><div id="bwd-participants" class="meeting-target">'+section("ผู้มีสิทธิ์เข้าถึง",attendees.length?attendees.map(a=>'<div class="item">'+esc(fullName(a.user_id))+' <span class="status">'+esc(a.role==="editor"?"ผู้จัดการ":a.role==="guest"?"ผู้เข้าร่วมภายนอก":"ผู้เข้าประชุม")+'</span></div>').join(""):empty("ไม่มีผู้เข้าร่วมในรายชื่อ"),
     editable?button("เพิ่มผู้เข้าร่วม","addAccess",{"meeting-id":m.id}):"")+'</div></div>';
+}
+
+
+function historyEntryMarkup(item){
+ const label=statuses[item.new_status]||item.new_status||"บันทึกเพิ่มเติม";
+ return '<article class="task-history-entry"><span class="task-history-dot" aria-hidden="true"></span>'+
+   '<div><p class="task-history-heading">'+esc(label)+'</p>'+
+   '<p class="task-history-meta">'+esc(formatHistoryDate(item.created_at))+' · '+esc(fullName(item.author_id))+'</p>'+
+   (item.note?'<p class="task-history-note">'+esc(item.note)+'</p>':"")+'</div></article>';
+}
+function closeTaskHistory(){
+ const dialog=$("taskHistoryDialog");
+ if(dialog.open)dialog.close();
+}
+async function openTaskHistory(taskId){
+ const task=state.tasks.find(t=>t.id===taskId);
+ if(!task)return statusMessage("ไม่พบภารกิจที่คุณมีสิทธิ์ดู",true);
+ const dialog=$("taskHistoryDialog");
+ if(dialog.open)dialog.close();
+ historyTaskId=task.id;historyOffset=0;historyTotal=null;historySeen.clear();
+ ++historyRequest;historyReturnFocus=document.activeElement;
+ $("taskHistoryTaskName").textContent=task.title;
+ $("taskHistoryBody").replaceChildren();
+ $("taskHistoryCount").textContent="";
+ $("taskHistoryMore").hidden=true;
+ dialog.showModal();
+ $("taskHistoryClose").focus({preventScroll:true});
+ await loadMoreTaskHistory();
+}
+async function loadMoreTaskHistory(){
+ if(historyLoading||!historyTaskId||!$("taskHistoryDialog").open)return;
+ historyLoading=true;
+ const ticket=historyRequest,taskId=historyTaskId;
+ const more=$("taskHistoryMore");
+ more.disabled=true;more.hidden=false;more.textContent="กำลังโหลด…";
+ try{
+  // The existing SELECT RLS policy restricts updates to tasks visible to this user.
+  const {data,error,count}=await state.client.from("task_updates")
+    .select("id,task_id,author_id,new_status,note,created_at",{count:"exact"})
+    .eq("task_id",taskId).order("created_at",{ascending:false}).order("id",{ascending:false})
+    .range(historyOffset,historyOffset+HISTORY_PAGE_SIZE-1);
+  if(error)throw error;
+  if(ticket!==historyRequest||!$("taskHistoryDialog").open||taskId!==historyTaskId)return;
+  const rows=data||[];
+  for(const item of rows){
+   if(historySeen.has(item.id))continue;
+   historySeen.add(item.id);
+   const holder=document.createElement("div");
+   holder.innerHTML=historyEntryMarkup(item);
+   $("taskHistoryBody").append(...holder.childNodes);
+  }
+  historyOffset+=rows.length;
+  if(Number.isFinite(count))historyTotal=count;
+  $("taskHistoryCount").textContent=historyTotal===null?
+    "แสดง "+historySeen.size+" บันทึก":"แสดง "+historySeen.size+" จาก "+historyTotal+" บันทึก";
+  if(historySeen.size===0)$("taskHistoryBody").innerHTML='<p class="empty">ยังไม่มีประวัติที่บันทึกไว้</p>';
+  more.hidden=rows.length<HISTORY_PAGE_SIZE||(historyTotal!==null&&historyOffset>=historyTotal);
+  more.textContent="โหลดเพิ่มเติม 20 รายการ";
+ }catch(error){
+  if(ticket===historyRequest&&$("taskHistoryDialog").open){
+   $("taskHistoryCount").textContent=friendlyError(error);
+   more.hidden=false;more.textContent="ลองโหลดอีกครั้ง";
+  }
+ }finally{
+  if(ticket===historyRequest){historyLoading=false;more.disabled=false;}
+ }
 }
 
 function renderTasks(){
@@ -591,6 +686,13 @@ async function submitForm(ev){
   case "taskReview":method="r2_review_task";args={p_task_id:tid,p_approve:editCtx.approve,p_note:g("note",4000),p_expected_version:t.version};break;
   case "taskOwner":method="r2_set_task_owner";args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version};break;
   case "taskNote":method="r2_add_task_note";args={p_task_id:tid,p_note:g("note",4000)};break;
+  case "coverPhoto":{
+    const raw=g("driveUrl",900),fileId=raw?parseDriveFileId(raw):null;
+    if(raw&&!fileId){showFormError("โปรดใส่ลิงก์ไฟล์ภาพ Google Drive ที่ถูกต้อง","driveUrl");return;}
+    method="r2_set_meeting_cover";args={p_meeting_id:mid,p_drive_file_id:fileId};
+    msg=fileId?"บันทึกภาพปกการประชุมแล้ว":"นำภาพปกออกแล้ว";
+    break;
+  }
   case "linkTask":method="r2_link_task";args={p_task_id:tid,p_meeting_id:g("meetingId",36),p_agenda_id:null};msg="เชื่อมงานเดิมกับการประชุมใหม่แล้ว";break;
   case "access":method="r2_add_access";args={p_meeting_id:mid,p_user_id:g("userId",36),p_role:g("role",20)};break;
   case "driveDoc":{
@@ -747,6 +849,8 @@ async function actionClick(ev){
   case "decision":openModal("decision",{agendaId:aid});break;
   case "minutes":openModal("minutes",{meetingId:mid});break;
   case "newTask":openModal("newTask",{meetingId:mid,agendaId:aid});break;
+  case "coverPhoto":openModal("coverPhoto",{meetingId:mid});break;
+  case "viewTaskHistory":await openTaskHistory(tid);break;
   case "taskState":openModal("taskState",{taskId:tid});break;
   case "taskApprove":openModal("taskReview",{taskId:tid,approve:true});break;
   case "taskReject":openModal("taskReview",{taskId:tid,approve:false});break;
@@ -820,6 +924,18 @@ function main(){
   if(entry)downloadBlob(previewFile.blob,entry.original_name||"evidence");
  });
  $("workspace").addEventListener("click",actionClick);
+ const taskHistoryDialog=$("taskHistoryDialog");
+ $("taskHistoryClose").addEventListener("click",closeTaskHistory);
+ $("taskHistoryMore").addEventListener("click",()=>loadMoreTaskHistory());
+ taskHistoryDialog.addEventListener("close",()=>{
+   ++historyRequest;historyTaskId=null;historyLoading=false;
+   if(historyReturnFocus?.isConnected)historyReturnFocus.focus({preventScroll:true});
+   historyReturnFocus=null;
+ });
+ $("workspace").addEventListener("error",event=>{
+   const image=event.target;
+   if(image?.matches?.(".meeting-cover img"))image.hidden=true;
+ },true);
  $("workspace").addEventListener("toggle",ev=>{
    const detail=ev.target;
    if(detail?.matches?.("details[data-task-details]")){
