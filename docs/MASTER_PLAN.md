@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.8 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.9 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -234,3 +234,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Source changes isolated to DOC-02 module, portal buttons, dialog/CSS, additive SQL, source tests and documentation; EXT-02 external reporting paths left intact. Live publication/merge/CI status tracked in DOC-02 acceptance document and PR.
 - [ ] **School release blockers:** Verify actual committee appointment order and acting-chair/secretary/recorder roles, the 13 agenda details and pending corrections in authorized documents, independent account RLS, restricted Drive access, true mobile A4 layout, backup/restore/privacy, and DOC-03 ratification/signature/official export workflow. Never auto-mark minutes approved.
 - **Recommended follow-up:** DOC-02 mobile/secretary sign-off using non-production test data; after approval, DOC-03 official document lifecycle; EXT-03 source-backed information→agenda/task linkage separately, without duplicate tasks.
+
+## 25. DOC-02 post-merge and Pages verification (2026-11-10)
+- [x] [PR #34](https://github.com/infobwd/bwd-meeting-hub/pull/34) merged into `main` at commit `71c59b4dc53c080749783ac01b001028019a92da`. Feature-branch checks run **280**, merge-commit checks run **281**, GitHub Pages deployment run **28**: all successful.
+- [x] Applied DOC-02 additive migration `20261110164032 doc02_separate_agenda_minutes_draft_versions_20261110`; read-only verification after merge confirms original **13 agenda items in 5 sections**, previous minutes **revision 4 in submitted status**, 1 meeting, 1 task, **0** new DOC-02 agenda/minutes draft rows, and **0** ratifications. No production school-board meeting records, user accounts, invitations or source documents changed.
+- [x] Only authorized meeting-editor staff may create separated append-only agenda/minutes draft snapshots; independent admin can review, but DOC-02 cannot ratify, sign, officially issue or auto-assign meeting outcomes. Draft A4 visual preview is watermark-marked and linked to source agenda records; legacy report state remains distinct.
+- [ ] Still pending: independently authenticated multi-role security tests, real iPhone/Android and PDF/A4 layout proof, school appointment-order/acting-chair and committee-procedure verification, backup/restore, protected Drive rights, and formal DOC-03 sign/ratification/export. No official school acceptance implied by GitHub Pages success.
+- Follow-up details: [DOC-02 acceptance](R2_DOC02_TWO_DOCUMENT_DRAFTS_ACCEPTANCE_20261110.md). Subsequent work should prioritize **secretary-led DOC-02 mobile/document acceptance** and **DOC-03 design/security approval** before enabling authoritative output; EXT-03 external-to-internal topic/task continuity remains independently scoped.
