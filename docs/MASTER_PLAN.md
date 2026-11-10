@@ -166,3 +166,14 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [ ] **Google Drive live sync requires** setting secret `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` in Supabase Edge Function Secrets and sharing the chosen Drive folder with the service-account email. The assistant has not provisioned that secret; until then the 10 reviewed gallery items work, while “ดึงภาพใหม่จาก Drive” reports that automatic sync is not configured.
 - [ ] Real-device iPhone / Android image rendering, restricted-Drive second-user rights, and manual school acceptance.
 - **No photos publicly exposed, no changes to Google Drive sharing, no meeting-status approval/ratification changes, and no actual meeting cover selected automatically.**
+
+## 17. UX-11 — Active assignee picker & submission withdrawal (2026-11-10)
+- [x] Replace raw UUID labels for changing task assignees with display names or account emails only; fetch only active staff via an authorized task-reviewer RPC. `private.staff_directory` remains private pre-invitation data and is **never** offered as an assignment target.
+- [x] Use meeting-editor scoped active staff choices when creating tasks, avoiding the stale/inactive profiles list. Current project has one active administrator and 10 staff-directory records not yet invited.
+- [x] Add **ดึงงานกลับมาแก้ไข** for owners of tasks in `submitted` state. A mandatory reason, task-version check, ownership check and pending-review check precede the return to `doing`; the original submitted record is retained.
+- [x] Only reviewers may change task assignees. Disallow reassignment in `submitted`, `approved` or `cancelled` states, require a reason, and append an audit event + progress entry recording old/new assignee. Disable the legacy 3-argument owner RPC so it cannot evade the new required reason.
+- [x] Preserve independent task approval: the owner cannot approve their own submission, and approval/rejection is separate from owner withdrawal.
+- [x] Add UX-11 frontend and backend source regression tests. Preserve existing meeting, document, Drive and Free-tier workflows.
+- [ ] iPhone and Android manual UAT with different owner/editor credentials, since no teacher has been invited and cross-account QA is not available yet. Backend UX-11 RPC migration deployed, version/anonymous-access gates verified without changing any task status.
+- [x] The school administrator account now has its full display name set in the private Supabase profile (only if previously blank); the picker falls back to email when a future user has not configured a name.
+- **Safety:** no user invitations, Auth account creation, task status mutations or historical-row deletions are part of this release.

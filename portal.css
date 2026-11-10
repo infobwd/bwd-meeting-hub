@@ -662,3 +662,16 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
  .cover-gallery-name{font-size:12px}
 }
 @media(max-width:340px){.cover-gallery-grid{gap:6px}}
+
+/* UX-11: understandable assignee options and deliberate submission recall. */
+.assignee-lookup-help{margin:4px 0 12px;padding:10px 12px;border-radius:9px;
+ background:#f1f6fb;color:#315779;font-size:13px;line-height:1.6}
+#f_ownerId{width:100%;max-width:100%;min-height:48px;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap}
+#f_ownerId option{white-space:normal}
+.task-card [data-action="taskWithdraw"]{border-color:#98aec7;background:#f4f8fd;color:#204b78}
+.task-card [data-action="taskWithdraw"]:focus-visible{outline:3px solid #efc64a;outline-offset:2px}
+@media(max-width:900px){
+ .assignee-lookup-help{font-size:12px}
+ #f_ownerId{font-size:16px}
+}

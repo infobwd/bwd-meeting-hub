@@ -49,7 +49,7 @@ test("independent reviewer can accept or return submitted task, but cannot chang
  assert.match(card,/ส่งให้ตรวจ/);
  assert.match(card,/data-action="taskApprove"/);
  assert.match(card,/data-action="taskReject"/);
- assert.match(card,/data-action="taskOwner"/);
+ assert.doesNotMatch(card,/data-action="taskOwner"/); // Reassignment must wait until review ends.
  assert.match(card,/data-action="linkTask"/);
  assert.match(card,/data-evidence-upload/);
  assert.doesNotMatch(card,/data-action="taskState"/);
@@ -63,10 +63,11 @@ test("assigned owner cannot self-approve a submitted task and guest gets no muta
  assert.doesNotMatch(card,/data-action="taskApprove"/);
  assert.doesNotMatch(card,/data-action="taskReject"/);
  assert.doesNotMatch(card,/data-action="taskState"/);
+ assert.match(card,/data-action="taskWithdraw"/);
  assert.match(card,/data-action="taskNote"/);
  seed("guest-1","guest");
  card=taskCard(task);
- for(const name of ["taskState","taskApprove","taskReject","taskOwner","taskNote","linkTask"]){
+ for(const name of ["taskState","taskApprove","taskReject","taskOwner","taskWithdraw","taskNote","linkTask"]){
    assert.ok(!card.includes('data-action="'+name+'"'),name);
  }
  assert.doesNotMatch(card,/data-evidence-upload/);
