@@ -21,3 +21,11 @@ An authorized school reviewer confirmed corrections to a legacy school-board mee
 
 ## Rollback / repair
 Previous content is retained in the private correction snapshot and per-item audit logs. Do not automatically restore rows with destructive DML. If a correction needs reversal, use a separately reviewed, conditional transaction that preserves the new version history and existing historical snapshots; never delete versions or approvals.
+
+## Execution / post-change verification (2026-11-10)
+- Implementation merged in [PR #36](https://github.com/infobwd/bwd-meeting-hub/pull/36); branch automated source/security suite run 295 passed. Migration `agenda_source_retirement_protected_20261110` applied successfully to Supabase Meeting ahead of the frontend.
+- Asset cache compatibility follow-up merged in [PR #37](https://github.com/infobwd/bwd-meeting-hub/pull/37); branch suite run 300 passed and `workspace.html` references the new DOC-02 and portal script asset versions on `main`.
+- Authorized correction executed as one guarded private database transaction; conditional checks required the expected meeting, submitted legacy minutes and unchanged source layout. All prior source rows retained; one withdrawn row has `retired_at` set and one new active topic has a fresh identifier.
+- **Read-only confirmed:** 14 physical agenda rows, 13 active rows across five sections (4/1/2/3/3), 1 retained withdrawn source, 1 protected before/after correction-batch snapshot, 14 per-row audit entries, 1 prior DOC-02 agenda draft, 0 new DOC-02 minutes drafts, 0 ratifications, 0 decisions, 1 original task link. The legacy minutes remain version 4 / submitted and the meeting remains `minutes_review`.
+- No existing DOC-02 document row was overwritten. A user opening an old editable document version should see a changed-source notice, and should explicitly confirm the rebase into a *new* draft version. Do not infer that this historical rebase flow has been accepted on a real phone.
+- **Remaining:** verify Pages delivery and manual iPhone/Android view with authorized account; verify actual role/RLS negative tests and backup/restore. Do not issue or ratify official documents from this maintenance step.
