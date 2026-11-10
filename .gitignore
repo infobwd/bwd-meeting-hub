@@ -1,0 +1,13 @@
+# Never commit database credentials, local environment files or private data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+supabase/.branches/
+supabase/.profiles/
+supabase/.temp/
+private-data/
+uploads/
+backup/
