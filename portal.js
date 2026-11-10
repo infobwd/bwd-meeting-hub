@@ -229,7 +229,7 @@ function taskCard(t,full=false){
   (t.description?'<p>'+esc(t.description)+'</p>':'')+
   '<div class="actions">'+
   (((mine||reviewer)&&!["approved","cancelled","submitted"].includes(t.status))?button("อัปเดตงาน","taskState",{"task-id":t.id},"primary"):"")+
-  (reviewer&&t.status==="submitted"?button("ตรวจรับ","taskApprove",{"task-id":t.id},"primary")+button("ให้แก้ไข","taskReject",{"task-id":t.id},"danger"):"")+
+  (reviewer&&!mine&&t.status==="submitted"?button("ตรวจรับ","taskApprove",{"task-id":t.id},"primary")+button("ให้แก้ไข","taskReject",{"task-id":t.id},"danger"):"")+
   (reviewer&&!["approved","cancelled"].includes(t.status)?button("เปลี่ยนผู้รับผิดชอบ","taskOwner",{"task-id":t.id}):"")+
   ((mine||reviewer)?button("เพิ่มบันทึก","taskNote",{"task-id":t.id}):"")+
   (reviewer?button("ติดตามในการประชุมอื่น","linkTask",{"task-id":t.id}):"")+
@@ -286,7 +286,7 @@ function renderMeeting(m){
     '<div class="actions">'+
     (editable&&(!min||min.status==="draft")?button("เขียน / แก้ไขรายงาน","minutes",{"meeting-id":m.id}):"")+
     (editable&&min?.status==="draft"&&min.body?button("ส่งให้ตรวจทาน","submitMinutes",{"meeting-id":m.id},"primary"):"")+
-    (isAdmin()&&min?.status==="submitted"?button("ยืนยันตรวจทาน","approveMinutes",{"meeting-id":m.id},"primary")+button("ส่งกลับให้แก้ไข","rejectMinutes",{"meeting-id":m.id},"danger"):"")+
+    (isAdmin()&&min?.status==="submitted"&&min.updated_by!==state.user?.id?button("ยืนยันตรวจทาน","approveMinutes",{"meeting-id":m.id},"primary")+button("ส่งกลับให้แก้ไข","rejectMinutes",{"meeting-id":m.id},"danger"):"")+
     (min?.status==="approved"?button("พิมพ์ / บันทึกเป็น PDF","printMinutes",{"meeting-id":m.id}):"")+'</div>')+
   section("งานที่เชื่อมกับการประชุม",linked.length?'<div class="cards">'+linked.map(l=>state.tasks.find(t=>t.id===l.task_id)).filter(Boolean).map(t=>taskCard(t)).join("")+'</div>':empty("ยังไม่มีภารกิจที่เชื่อมกับการประชุม"),
     editable?button("＋ เพิ่มงาน","newTask",{"meeting-id":m.id},"primary"):"")+
