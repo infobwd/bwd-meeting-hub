@@ -48,21 +48,32 @@
         <span class="role-pill" id="roleLabel"></span>
       </div>
       <nav class="tabs" aria-label="เลือกส่วนงาน">
-        <button class="tab current" data-page="overview" type="button">ภาพรวม</button>
-        <button class="tab" data-page="meetings" type="button">การประชุม</button>
-        <button class="tab" data-page="tasks" type="button">งานของฉัน / งานที่ติดตาม</button>
+        <button class="tab current" data-page="overview" type="button" aria-label="ภาพรวม"><span class="tab-icon" aria-hidden="true">⌂</span><span>ภาพรวม</span></button>
+        <button class="tab" data-page="meetings" type="button" aria-label="การประชุม"><span class="tab-icon" aria-hidden="true">▤</span><span>การประชุม</span></button>
+        <button class="tab" data-page="tasks" type="button" aria-label="งานของฉันและงานที่ติดตาม"><span class="tab-icon" aria-hidden="true">☑</span><span class="tab-long">งานของฉัน / งานที่ติดตาม</span><span class="tab-short">ภารกิจ</span></button>
       </nav>
       <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
       <div id="portalBody" aria-live="off"></div>
     </section>
   </main>
-  <dialog id="modal" aria-labelledby="modalTitle">
+  <dialog id="modal" class="form-sheet" aria-labelledby="modalTitle">
     <form id="actionForm">
-      <div class="modal-head"><h2 id="modalTitle"></h2><button class="button subtle" type="button" id="closeModal" aria-label="ปิด">✕</button></div>
+      <div class="modal-head"><h2 id="modalTitle" tabindex="-1"></h2><button class="button subtle" type="button" id="closeModal" aria-label="ปิด">✕</button></div>
       <div id="modalFields"></div>
       <div class="modal-actions"><button class="button subtle" type="button" id="cancelModal">ยกเลิก</button><button class="button primary" type="submit" id="submitModal">บันทึก</button></div>
     </form>
   </dialog>
+  <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <form method="dialog">
+      <h2 id="confirmTitle">ยืนยันการดำเนินการ</h2>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="button subtle" type="submit" value="cancel">ยกเลิก</button>
+        <button class="button primary" type="submit" value="confirm">ยืนยัน</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   <footer>ข้อมูลในพื้นที่นี้ต้องได้รับอนุญาตก่อนเข้าถึง • ไม่มีระบบแจ้งเตือนอัตโนมัติใน R2</footer>
 </body>
 </html>
