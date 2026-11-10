@@ -11,6 +11,7 @@
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./portal.js" defer></script>
+  <script src="./meeting-pdf-reader.js?v=r2sports1" defer></script>
 </head>
 <body>
   <a class="skip" href="#screen">ข้ามไปยังเนื้อหา</a>
@@ -74,6 +75,52 @@
         <button class="button primary" type="button" id="previewDownload" disabled>ดาวน์โหลดไฟล์</button>
         <button class="button subtle" type="button" id="previewCloseFooter">ปิด</button>
       </div>
+    </div>
+  </dialog>
+  <!-- Sports-style meeting reader; Google Drive ACL remains authoritative. -->
+  <dialog id="meetingReader" class="meeting-reader" aria-labelledby="readerTitle">
+    <div class="reader-shell">
+      <header class="reader-header">
+        <button id="readerClose" class="reader-back" type="button" aria-label="ปิด PDF และกลับไปหน้าการประชุม">← <span>กลับการประชุม</span></button>
+        <h2 id="readerTitle" class="reader-title">อ่านเอกสารประชุม</h2>
+        <details id="readerTools" class="reader-tools">
+          <summary aria-label="ตัวเลือกการอ่าน PDF">⋯ <span>ตัวเลือก</span></summary>
+          <div class="reader-menu">
+            <p id="readerSource" class="reader-source">อ่านผ่าน Google Drive</p>
+            <div class="reader-tools-grid" role="group" aria-label="การแสดงหน้ากระดาษ">
+              <button type="button" id="readerFitWidth" disabled aria-pressed="true">พอดีกว้าง</button>
+              <button type="button" id="readerFitPage" disabled aria-pressed="false">ทั้งหน้า</button>
+              <button type="button" id="readerZoomOut" disabled aria-label="ย่อ">−</button>
+              <span id="readerZoomLabel" role="status">พอดีกว้าง</span>
+              <button type="button" id="readerZoomIn" disabled aria-label="ขยาย">+</button>
+            </div>
+            <label class="reader-local-label" for="readerLocalPdf">อ่านแบบหนังสือจาก PDF ในเครื่อง
+              <input id="readerLocalPdf" type="file" accept=".pdf,application/pdf">
+            </label>
+            <p class="reader-tip">ใช้ปุ่มเปลี่ยนหน้าและปัดซ้าย–ขวาได้เมื่อเลือกไฟล์ PDF จากเครื่อง ไฟล์จะไม่ถูกอัปโหลด</p>
+            <button id="readerBackDrive" type="button" class="reader-drive-button" hidden>กลับไปอ่านผ่าน Google Drive</button>
+            <a id="readerOpenDrive" target="_blank" rel="noopener noreferrer" href="https://drive.google.com/">เปิดต้นฉบับใน Google Drive</a>
+          </div>
+        </details>
+      </header>
+      <p id="readerNotice" class="reader-draft">ฉบับร่าง — ยังไม่รับรอง</p>
+      <p id="readerStatus" class="reader-status" role="status" aria-live="polite"></p>
+      <div class="reader-content">
+        <div id="readerDrivePane" class="reader-drive-pane">
+          <iframe id="readerDriveFrame" title="อ่าน PDF จาก Google Drive" src="about:blank" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
+        </div>
+        <div id="readerCanvasPane" class="reader-canvas-pane" hidden>
+          <div id="readerCanvasHost" class="reader-canvas-host" aria-label="อ่าน PDF ปัดซ้ายหรือขวาเพื่อเปลี่ยนหน้าเมื่อไม่ขยาย">
+            <canvas id="readerCanvas" aria-label="หน้ากระดาษ PDF"></canvas>
+          </div>
+        </div>
+      </div>
+      <nav id="readerPageBar" class="reader-pagebar" aria-label="เปลี่ยนหน้ากระดาษ" hidden>
+        <button id="readerPrev" type="button" aria-label="หน้าก่อนหน้า" disabled>‹ ก่อนหน้า</button>
+        <label>หน้า <input id="readerPage" type="number" min="1" max="1" value="1" inputmode="numeric" disabled aria-label="หมายเลขหน้า PDF"></label>
+        <span id="readerTotal">/ 1</span>
+        <button id="readerNext" type="button" aria-label="หน้าถัดไป" disabled>ถัดไป ›</button>
+      </nav>
     </div>
   </dialog>
   <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
