@@ -46,12 +46,23 @@ Related: [EXT-00 audit](R2_EXT00_SOURCE_BASELINE_AND_CONTRACT_20261110.md), [DOC
 |---|---|
 | SQL/RPC authored in branch | Complete |
 | Source-level tests added | Complete |
-| GitHub Actions + review | Verify in PR |
-| SQL applied to linked Supabase | Verify separately after PR |
-| Live schema/read grants/function permissions | Verify after apply |
+| GitHub Actions + review | **Passed:** PR #30, workflow run 231 |
+| SQL applied to linked Supabase | **Applied:** both migrations on 2026-11-10 |
+| Live schema/read grants/function permissions | **Verified read-only** after apply |
 | Real multi-role auth/RLS checks | Blocked: only one active account at baseline |
 | Full school-approved agenda/report forms | Pending formal sign-off |
 | UI/Drive files/PDF export | EXT-02 / DOC-02 / DOC-03, not this slice |
 | Production go-live/backup-restore/privacy | Not approved |
 
 This file is a release checklist and implementation record, not a claim that any real meeting report was ratified.
+
+## 6. Post-deployment verification (2026-11-10)
+- GitHub PR [#30](https://github.com/infobwd/bwd-meeting-hub/pull/30) merged into `main`; CI `BWD smoke and security checks` run 231 succeeded. Backend migration sources are committed; no UI changes.
+- Supabase Meeting migration history: `20261110152820 ext01_external_meeting_participation_20261110` followed by `20261110152836 doc01_official_document_contract_20261110`. Both reported success.
+- **Before and after:** meetings=1, agendas=13, minutes=1, tasks=1. Existing meeting remains `meeting_mode=NULL`. All five added tables are empty (no meeting attendance or documents fabricated).
+- New tables (`meeting_participations`, `external_attendance_reports`, `meeting_document_settings`, `meeting_official_minutes_versions`, `meeting_ratifications`): RLS enabled; each has a scoped SELECT policy; `anon` SELECT=false; `authenticated` SELECT=true, direct INSERT/UPDATE=false. Row-level access still requires the policy conditions.
+- Eight new `r2_ext_*`/`r2_doc_*` RPC signatures: `anon EXECUTE=false`, `authenticated EXECUTE=true`, SECURITY DEFINER with role / meeting permission checks. Important: this is permission catalog verification, **not** live attacker-role execution testing.
+- Legacy signatures for create meeting, add agenda, save/review minutes, link task and task submission withdrawal still exist and are executable by authenticated users under their existing server checks.
+- `agendas_section_check` now allows storage sections 1–6; legacy UI and `r2_add_agenda` continue using 1–5. No sixth-section row was inserted.
+- Supabase security advisor: `authenticated_security_definer_function_executable` warnings increased from 21 to 29 (the eight deliberately exposed guarded RPCs); each must remain in manual security review. Existing `private.staff_directory` RLS/no-policy INFO and leaked-password-protection WARN remain open and require separate owner action. See https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable and https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection.
+- **NOT verified:** independent accounts / authenticated cross-role RLS, per-role RPC execution/denial, iPhone/Android UI, secure backup/restore, document/signature/ratification school sign-off. **No production go-live approval.**
