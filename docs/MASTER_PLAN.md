@@ -110,3 +110,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - Continue to use Nongkum Sports PDF.js reader as the **document-reader behavior reference**, while TDRS informs the app-wide visual and mobile interaction treatment.
 - Ordered gates: UX-00 current-screen audit → UX-01 app shell → UX-02 meetings → UX-03 tasks → UX-04 forms/status → UX-05 PDF viewer → UX-06 device/accessibility/role acceptance; optional UX-07 (PWA/theme) separately.
 - No Supabase data, Drive sharing rules, authentication, meeting decisions, or UI code changed by this planning step. Preserve existing R2 behavior until each slice is separately approved and tested.
+
+## 12. Supabase Free — capacity, backup and quota guardrails (2026-11-10)
+- **Policy recorded:** [docs/SUPABASE_FREE_USAGE_GUARDRAILS_20261110.md](SUPABASE_FREE_USAGE_GUARDRAILS_20261110.md).
+- Supabase organization confirmed **Free**, project `Meeting` is ACTIVE_HEALTHY; one active project observed. Database ~12.65 MB; private Storage metadata ~2.42 MB at baseline (2026-11-10). Monthly usage and egress are **not yet verified**; do not treat them as zero.
+- Internal thresholds: 70% watch, 85% escalate, 95% critical review, by individual meter. Threshold actions are manual/planned **not enabled automated enforcement**.
+- Mandatory release gate: official dashboard Usage review, protected external backup + restore test, 7-day inactivity pause recovery plan, upload and retention policies, RLS/live-account acceptance. No secret or personal data in public repository.
+- R3 reminders must respect Edge/Realtime quotas, opt-in and deduplication; do not add high-frequency background polling or a synthetic keep-alive.
