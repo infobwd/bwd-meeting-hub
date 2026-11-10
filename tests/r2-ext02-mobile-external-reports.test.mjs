@@ -124,8 +124,8 @@ test("EXT-02: UI wires audited RPCs without using private preinvite directory",(
  assert.match(portal,/externalRosterLoading/);
  assert.match(portal,/state\.externalReports\]=results\.map/);
  assert.doesNotMatch(portal,/private\.staff_directory|inviteUserByEmail|createUser\(/);
- assert.match(html,/portal\.js\?v=doc02/);
- assert.match(html,/doc02\.js\?v=doc02/);
+ assert.match(html,/portal\.js\?v=doc02ux/);
+ assert.match(html,/doc02\.js\?v=doc02ux/);
  assert.match(css,/\.ext-report-card/);
  assert.match(css,/min-height:44px/);
 });
