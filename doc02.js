@@ -364,8 +364,8 @@ function handleClick(event){
  if(action){run(action.dataset.doc02Action,action);return;}
 }
 function close(){
- if(hasUnsaved&&!global.confirm("มีการแก้ไขพรีวิวที่ยังไม่ได้บันทึก ต้องการปิดหรือไม่?"))return;
- $("doc02Dialog")?.close();context=null;hasUnsaved=false;
+ if(hasUnsaved&&!global.confirm("มีข้อมูลที่แก้ไขแต่ยังไม่บันทึก ต้องการปิดและทิ้งการแก้ไขนี้หรือไม่?"))return;
+ closePrivate();
 }
 async function open(options){
  if(!options?.meeting||options.meeting.meeting_mode==="externally_hosted"||
