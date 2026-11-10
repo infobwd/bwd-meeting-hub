@@ -29,3 +29,19 @@ Updated: 2026-11-10. Status: **UI enhancement — live device testing pending.**
 
 ## Rollout
 GitHub Pages serves the R2 workspace; after merging, hard-refresh the browser if an old CSS/JS copy is cached. No additional Supabase schema changes are required for the presentation-layer update.
+
+
+## In-app private evidence preview (2026-11-10)
+- Preview button in each visible task's evidence list; separate Download action remains.
+- Images (JPEG/PNG/WebP) display with contain-fit in a responsive full-screen viewer on phones and tablets.
+- PDF uses an embedded in-app viewer and offers download as a fallback on devices with limited inline PDF support.
+- Viewer gets bytes via authenticated private Storage download, then a temporary local `blob:` URL. No public bucket, public URL or unsigned share link is created; temporary URL is revoked on close.
+- Viewer closes with its close button, dialog Escape or backdrop; focus returns to triggering control where it still exists.
+- A staging read-only query confirmed **one image evidence record**, but this is not a completed end-to-end iOS preview acceptance test.
+
+### Remaining manual acceptance
+- [ ] Open the existing image from an authorized iPhone account; verify it fits, zoom and close work.
+- [ ] Upload and preview a fresh PDF on iOS Safari and Android Chrome; if built-in PDF rendering is unavailable, verify download fallback.
+- [ ] Confirm task assignee and authorized reviewer can see and download only their permitted files.
+- [ ] Confirm revoked or unauthorized accounts cannot preview or download the private evidence, even by copying an object path.
+- [ ] Verify repeated opens/closes do not leave stale previews or blank overlays; test a slow network and failed fetch.
