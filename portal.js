@@ -150,8 +150,13 @@ function clearPrivateView(){
  state.activeMeeting=null;state.agendaOpen={};state.taskDetailsOpen={};
  state.loadError="";state.loading=false;
 }
+function closeAccountMenu(){
+ const menu=$("accountMenu");
+ if(menu?.open)menu.open=false;
+}
 function setPage(page){
   if(!["overview","meetings","tasks"].includes(page))return;
+  closeAccountMenu();
   state.page=page;state.activeMeeting=null;statusMessage("");
   render();window.scrollTo({top:0,behavior:"auto"});
 }
@@ -222,6 +227,41 @@ function parseDriveFileId(value){
     if(seg.length<3||!["file","document","spreadsheets","presentation"].includes(seg[0])||seg[1]!=="d")return null;
     return /^[A-Za-z0-9_-]{10,128}$/.test(seg[2])?seg[2]:null;
   }catch{return null;}
+}
+// Cover photos must be Drive *files*, never Docs/Sheets/Slides or folders.
+function parseDriveCoverFileId(value){
+ const fileId=parseDriveFileId(value);
+ if(!fileId)return null;
+ try{
+  const url=new URL(String(value||"").trim());
+  if(url.hostname!=="drive.google.com"||!/^\/file\/d\/[A-Za-z0-9_-]{10,128}(?:\/|$)/.test(url.pathname))return null;
+  return fileId;
+ }catch{return null;}
+}
+function updateCoverPreview(){
+ if(editMode!=="coverPhoto")return;
+ const field=$("f_driveUrl"),img=$("coverPreviewImage"),message=$("coverPreviewMessage"),link=$("coverPreviewLink");
+ if(!field||!img||!message||!link)return;
+ const raw=field.value.trim(),fileId=raw?parseDriveCoverFileId(raw):null;
+ img.onload=null;img.onerror=null;img.hidden=true;img.removeAttribute("src");
+ link.hidden=true;link.removeAttribute("href");
+ if(!raw){message.textContent="ยังไม่ได้เลือกภาพปก";return;}
+ if(!fileId){message.textContent="โปรดใช้ลิงก์ไฟล์จาก Google Drive รูปแบบ drive.google.com/file/d/...";return;}
+ const url="https://drive.google.com/thumbnail?id="+encodeURIComponent(fileId)+"&sz=w640";
+ link.href="https://drive.google.com/file/d/"+encodeURIComponent(fileId)+"/view";
+ link.hidden=false;
+ message.textContent="กำลังโหลดตัวอย่างภาพ…";
+ img.onload=()=>{
+  if(img.src!==url)return;
+  img.hidden=false;
+  message.textContent="ตัวอย่างภาพ (กรุณายืนยันชนิดไฟล์จากต้นฉบับใน Google Drive)";
+ };
+ img.onerror=()=>{
+  if(img.src!==url)return;
+  img.hidden=true;
+  message.textContent="แสดงตัวอย่างไม่ได้ อาจต้องเข้าถึงผ่าน Google Drive กรุณาเปิดต้นฉบับเพื่อตรวจสอบว่าเป็นรูปภาพ";
+ };
+ img.src=url;
 }
 function meetingDocumentMarkup(d){
   if(!/^[A-Za-z0-9_-]{10,128}$/.test(d.drive_file_id||""))return "";
@@ -327,7 +367,14 @@ function openModal(mode,ctx={}){
   const existing=m.cover_drive_file_id?"https://drive.google.com/file/d/"+encodeURIComponent(m.cover_drive_file_id)+"/view":"";
   body='<p class="muted">'+esc(displayMeetingTitle(m))+'</p>'+
     '<div class="notice-box">เลือกภาพจาก Google Drive ที่คุณมีสิทธิ์ใช้งาน ผู้ดูการประชุมต้องได้รับสิทธิ์เข้าถึงภาพใน Google Drive ด้วย ไม่ต้องเปลี่ยนเป็นสาธารณะ</div>'+
-    field("ลิงก์ภาพจาก Google Drive","driveUrl",input("driveUrl","url",existing,false,900),"ลบลิงก์ในช่องนี้แล้วกดบันทึก หากต้องการเอาภาพปกออก");
+    field("ลิงก์ภาพจาก Google Drive","driveUrl",input("driveUrl","url",existing,false,900),"ใช้ลิงก์ไฟล์ภาพจาก Google Drive เท่านั้น หรือเว้นว่างเพื่อนำภาพปกออก")+
+    '<div class="cover-preview" aria-label="ตัวอย่างภาพปกจาก Google Drive">'+
+      '<img id="coverPreviewImage" alt="ภาพตัวอย่างปกการประชุม" hidden>'+
+      '<p id="coverPreviewMessage" role="status">ยังไม่ได้เลือกภาพปก</p>'+
+      '<a id="coverPreviewLink" class="button small outline" target="_blank" rel="noopener noreferrer" hidden>เปิดต้นฉบับใน Google Drive</a>'+
+    '</div>'+
+    '<div class="cover-confirm"><input type="checkbox" id="f_coverConfirmed" name="coverConfirmed" value="yes">'+
+    '<label for="f_coverConfirmed">ยืนยันว่าไฟล์ที่เลือกเป็นรูปภาพ ไม่ใช่ PDF หรือเอกสารอื่น และผู้เข้าประชุมได้รับสิทธิ์ดูไฟล์นี้แล้ว</label></div>';
  }else if(mode==="taskNote"&&t){
   label="บันทึกความคืบหน้า";
   body='<p class="muted">'+esc(t.title)+'</p>'+field("บันทึก *","note",textarea("note","",true));
@@ -349,6 +396,7 @@ function openModal(mode,ctx={}){
   body=field("ชื่อแสดง *","displayName",input("displayName","text",state.profile?.display_name||"",true,160));
  }else{return;}
  $("modalTitle").textContent=label;$("modalFields").innerHTML=body;
+ if(mode==="coverPhoto")updateCoverPreview();
  clearFieldErrors();
  formSubmitting=false;discardPromptActive=false;
  formSnapshot=JSON.stringify(Array.from(new FormData(actionForm).entries()));
@@ -566,7 +614,7 @@ function renderMeeting(m){
 function historyEntryMarkup(item){
  const label=statuses[item.new_status]||item.new_status||"บันทึกเพิ่มเติม";
  return '<article class="task-history-entry"><span class="task-history-dot" aria-hidden="true"></span>'+
-   '<div><p class="task-history-heading">'+esc(label)+'</p>'+
+   '<div class="task-history-entry-content"><p class="task-history-heading">'+esc(label)+'</p>'+
    '<p class="task-history-meta">'+esc(formatHistoryDate(item.created_at))+' · '+esc(fullName(item.author_id))+'</p>'+
    (item.note?'<p class="task-history-note">'+esc(item.note)+'</p>':"")+'</div></article>';
 }
@@ -687,8 +735,12 @@ async function submitForm(ev){
   case "taskOwner":method="r2_set_task_owner";args={p_task_id:tid,p_owner_id:g("ownerId",36)||null,p_expected_version:t.version};break;
   case "taskNote":method="r2_add_task_note";args={p_task_id:tid,p_note:g("note",4000)};break;
   case "coverPhoto":{
-    const raw=g("driveUrl",900),fileId=raw?parseDriveFileId(raw):null;
-    if(raw&&!fileId){showFormError("โปรดใส่ลิงก์ไฟล์ภาพ Google Drive ที่ถูกต้อง","driveUrl");return;}
+    const raw=g("driveUrl",900),fileId=raw?parseDriveCoverFileId(raw):null;
+    if(raw&&!fileId){showFormError("โปรดใช้ลิงก์ไฟล์ภาพ Google Drive รูปแบบ drive.google.com/file/d/...","driveUrl");return;}
+    if(fileId&&!$("f_coverConfirmed")?.checked){
+      showFormError("กรุณาเปิดต้นฉบับใน Google Drive และยืนยันว่าไฟล์นี้เป็นรูปภาพ ไม่ใช่ PDF หรือเอกสาร","driveUrl");
+      return;
+    }
     method="r2_set_meeting_cover";args={p_meeting_id:mid,p_drive_file_id:fileId};
     msg=fileId?"บันทึกภาพปกการประชุมแล้ว":"นำภาพปกออกแล้ว";
     break;
@@ -831,8 +883,8 @@ async function actionClick(ev){
   case "retryLoad":await reload();break;
   case "goMeetings":setPage("meetings");break;
   case "goTasks":setPage("tasks");break;
-  case "openMeeting":state.meetingListScroll=window.scrollY;state.page="meetings";state.activeMeeting=mid;render();window.scrollTo(0,0);break;
-  case "backMeetings":state.activeMeeting=null;render();window.scrollTo(0,state.meetingListScroll||0);break;
+  case "openMeeting":closeAccountMenu();state.meetingListScroll=window.scrollY;state.page="meetings";state.activeMeeting=mid;render();window.scrollTo(0,0);break;
+  case "backMeetings":closeAccountMenu();state.activeMeeting=null;render();window.scrollTo(0,state.meetingListScroll||0);break;
   case "expandAgendas":
   case "collapseAgendas":{
     if(state.activeMeeting!==mid)return;
@@ -907,7 +959,17 @@ function main(){
   if(error){$("loginMessage").textContent="เข้าสู่ระบบไม่ได้ โปรดตรวจสอบอีเมลหรือรหัสผ่าน";return;}
   ev.currentTarget.reset();$("loginMessage").textContent="";await bootstrap();
  });
- $("logout").addEventListener("click",async()=>{await state.client.auth.signOut();await bootstrap();});
+ const accountMenu=$("accountMenu");
+ document.addEventListener("pointerdown",event=>{
+   if(accountMenu.open&&!accountMenu.contains(event.target))closeAccountMenu();
+ });
+ document.addEventListener("keydown",event=>{
+   if(event.key==="Escape"&&accountMenu.open){
+     closeAccountMenu();
+     accountMenu.querySelector("summary")?.focus({preventScroll:true});
+   }
+ });
+ $("logout").addEventListener("click",async()=>{closeAccountMenu();await state.client.auth.signOut();await bootstrap();});
  state.client.auth.onAuthStateChange((event)=>{
   if(["SIGNED_IN","SIGNED_OUT","TOKEN_REFRESHED"].includes(event)){
     clearTimeout(authChangeTimer);authChangeTimer=setTimeout(()=>bootstrap(),250);
@@ -975,6 +1037,11 @@ function main(){
  $("cancelModal").addEventListener("click",()=>closeModal());
  actionForm.addEventListener("input",event=>{
    if(event.target?.matches?.("input,select,textarea"))clearFieldErrors();
+   if(editMode==="coverPhoto"&&event.target?.id==="f_driveUrl"){
+     const confirm=$("f_coverConfirmed");
+     if(confirm)confirm.checked=false;
+     updateCoverPreview();
+   }
  });
  actionForm.addEventListener("change",event=>{
    if(editMode==="taskState"&&event.target?.id==="f_status")updateTaskStatusHelp(event.target.value);
