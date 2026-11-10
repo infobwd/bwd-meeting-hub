@@ -29,7 +29,7 @@ const headerKeys=[
  ["other_attendees","ผู้เข้าร่วมประชุมที่ไม่ใช่กรรมการ (ถ้ามี)"]
 ];
 let context=null,activeType="agenda",documents={agenda:null,minutes:null},templateKey="legacy5",
-    busy=false,hasUnsaved=false,sessionGeneration=0;
+    busy=false,hasUnsaved=false,sessionGeneration=0,activeView="edit";
 
 function ordered(items){return items.slice().sort((a,b)=>Number(a.section)-Number(b.section)||Number(a.position)-Number(b.position));}
 function sourceFields(type,meeting,agendas){
@@ -59,6 +59,20 @@ function titleForSection(section){
  const map=templateKey==="school6"?labels6:labels5;
  return map[section]||"หมวดวาระที่ "+String(section);
 }
+function cleanItemTitle(item){
+ const title=String(item.title||"").trim(),no=String(item.display_no||String(item.section)+"."+String(item.position));
+ // Strip the number only when the original title starts with THIS item's display number.
+ // The original source title, section and position are never modified.
+ for(const prefix of [no,"วาระ "+no,"วาระที่ "+no]){
+  if(!title.startsWith(prefix))continue;
+  const rest=title.slice(prefix.length);
+  if(rest && !/^[\s.:：)–—-]/.test(rest))continue;
+  const cleaned=rest.replace(/^[\s.:：)–—-]+/,"").trim();
+  return cleaned||title;
+ }
+ return title;
+}
+
 function thaiDate(value){
  if(!value)return "ยังไม่กำหนดวัน";
  const d=new Date(String(value)+"T12:00:00");
@@ -67,13 +81,15 @@ function thaiDate(value){
 function textField(label,key,value,wide=false){
  return '<label class="doc02-field">'+escapeHtml(label)+
  (wide?'<textarea data-doc02-header="'+escapeHtml(key)+'" rows="3" maxlength="8000">':
-  '<input data-doc02-header="'+escapeHtml(key)+'" maxlength="500" value="'+escapeHtml(value||"")+'">')+
+  '<input data-doc02-header="'+escapeHtml(key)+'" maxlength="500"'+
+  (key==="meeting_no"?' placeholder="เช่น 1/2569 (ตรวจสอบตามข้อมูลจริง)"':"")+
+  ' value="'+escapeHtml(value||"")+'">')+
  (wide?escapeHtml(value||"")+'</textarea>':"")+'</label>';
 }
 function itemFields(item,type){
  const keys=type==="agenda"?extraAgendaLabels:outcomeLabels;
  return '<details class="doc02-agenda-editor"><summary>วาระ '+
-  escapeHtml(item.display_no||String(item.section)+"."+String(item.position))+" — "+escapeHtml(item.title)+
+  escapeHtml(item.display_no||String(item.section)+"."+String(item.position))+" — "+escapeHtml(cleanItemTitle(item))+
   '</summary><p class="doc02-source-note">รายละเอียดหัวข้อเดิม (อ่านอย่างเดียว): '+
   escapeHtml(item.notes||"ไม่มีข้อความประกอบ")+'</p>'+
   keys.map(([key,label])=>'<label class="doc02-field">'+escapeHtml(label)+
@@ -98,7 +114,7 @@ function line(value,placeholder="ยังไม่ระบุ"){
 }
 function itemPreview(item,type){
  const no=escapeHtml(item.display_no||String(item.section)+"."+String(item.position));
- let body='<div class="doc02-paper-item"><h4>วาระ '+no+" "+escapeHtml(item.title)+'</h4>';
+ let body='<div class="doc02-paper-item"><h4>วาระ '+no+" "+escapeHtml(cleanItemTitle(item))+'</h4>';
  if(type==="agenda"){
   if(item.notes)body+='<p><b>รายละเอียดต้นทาง:</b> '+line(item.notes)+'</p>';
   for(const [key,label] of extraAgendaLabels){if(item[key])body+='<p><b>'+escapeHtml(label)+':</b> '+line(item[key])+'</p>';}
@@ -160,7 +176,7 @@ function previewMarkup(type,fields){
  return markup;
 }
 function selectedStatus(){
- const current=documents[activeType];return current?statusNames[current.document_status]||"ไม่ทราบสถานะ":"ยังไม่มีร่างบันทึก";
+ const current=documents[activeType];return current?statusNames[current.document_status]||"ไม่ทราบสถานะ":"ฉบับร่าง (ยังไม่บันทึก)";
 }
 function renderDialog(){
  const dialog=$("doc02Dialog");if(!dialog||!context)return;
@@ -168,7 +184,7 @@ function renderDialog(){
  const readonly=!context.editable||["submitted","reviewed","ratified"].includes(latest?.document_status);
  const actions='<div class="doc02-actions">'+
   '<button type="button" data-doc02-action="preview" class="button outline">อัปเดตพรีวิว A4</button>'+
-  (context.editable&&!readonly?'<button type="button" data-doc02-action="save" class="button primary">บันทึกร่างฉบับใหม่</button>':"")+
+  (context.editable&&!readonly?'<button type="button" data-doc02-action="save" class="button primary">บันทึกร่าง</button>':"")+
   (context.editable&&latest?.document_status==="draft"?
    '<button type="button" data-doc02-action="submit" class="button outline">ส่งเอกสารให้ตรวจทาน</button>':"")+
   (context.isAdmin&&latest?.document_status==="submitted"&&latest.recorded_by!==context.user?.id?
@@ -178,16 +194,17 @@ function renderDialog(){
   '</div>';
  const leg=context.oldMinutes;
  const legacyInfo=type==="minutes"&&leg?
-  '<p class="doc02-legacy-status">รายงานเดิมในระบบ: ฉบับที่ '+escapeHtml(leg.version||0)+
+  '<span class="doc02-legacy-chip">รายงานเดิม: ฉบับที่ '+escapeHtml(leg.version||0)+
   ' · '+escapeHtml(({draft:"ฉบับร่าง",submitted:"รอตรวจทาน",approved:"ผู้บริหารตรวจทานแล้ว"})[leg.status]||leg.status)+
-  ' — เป็นคนละชุดกับร่าง DOC-02 และจะไม่ถูกเขียนทับ</p>':"";
+  '</span>':"";
  $("doc02Title").textContent=type==="agenda"?"ร่างระเบียบวาระและพรีวิว A4":"ร่างรายงานการประชุมและพรีวิว A4";
  $("doc02Tabs").innerHTML=['agenda','minutes'].map(key=>
    '<button type="button" role="tab" data-doc02-type="'+key+'" aria-selected="'+(key===type)+'" class="button '+
    (key===type?"primary":"outline")+'">'+escapeHtml(documentNames[key])+'</button>').join("");
- $("doc02Status").innerHTML='<span class="status">'+escapeHtml(selectedStatus())+'</span>'+
-   '<span class="mini">'+escapeHtml(latest?'รุ่นที่ '+latest.revision:'ยังไม่มีรุ่นที่บันทึก')+'</span>'+
-   '<p class="mini">เอกสารนี้แยกจากการรับรองรายงานการประชุมอย่างเป็นทางการ</p>'+legacyInfo;
+ $("doc02Status").innerHTML='<div class="doc02-state-top"><span class="status">'+escapeHtml(selectedStatus())+'</span>'+
+   (latest?'<span class="mini">รุ่นที่ '+escapeHtml(latest.revision)+'</span>':"")+legacyInfo+'</div>'+
+   '<details class="doc02-state-details"><summary>รายละเอียดสถานะเอกสาร</summary>'+
+   '<p>ร่าง DOC-02 แยกจากรายงานเดิม และการตรวจทานไม่ใช่การรับรองโดยที่ประชุม</p></details>';
  $("doc02Editor").innerHTML=readonly?
   '<p class="notice-box">เอกสารรุ่นนี้ล็อกไว้ตามสถานะ หากส่งตรวจแล้วต้องให้ผู้ตรวจส่งกลับก่อนแก้ไข</p>'+
    editorMarkup(type,fields):editorMarkup(type,fields);
@@ -196,6 +213,7 @@ function renderDialog(){
  $("doc02Preview").innerHTML=previewMarkup(type,fields);
  $("doc02Error").hidden=true;$("doc02Error").textContent="";
  hasUnsaved=false;
+ syncView();
 }
 function captureForm(){
  const latest=draftFields(activeType);
@@ -231,13 +249,33 @@ async function reloadDocuments(){
  documents={agenda:ag,minutes:mi};
  renderDialog();
 }
+function syncView(){
+ const dialog=$("doc02Dialog");
+ if(!dialog)return;
+ dialog.dataset.mobileView=activeView;
+ $("doc02ViewSwitch")?.querySelectorAll("[data-doc02-view]").forEach(button=>{
+  const selected=button.dataset.doc02View===activeView;
+  button.setAttribute("aria-pressed",String(selected));
+ });
+}
+function setView(view){
+ if(!context||!["edit","preview"].includes(view))return;
+ if(view==="preview"){
+  // Reuse current unsaved form values for visual preview only; never write on toggle.
+  $("doc02Preview").innerHTML=previewMarkup(activeType,captureForm());
+ }
+ activeView=view;
+ syncView();
+ const pane=view==="preview"?$("doc02PreviewPane"):$("doc02Editor");
+ pane?.scrollTo?.({top:0,behavior:"auto"});
+}
+
 async function run(action,button){
  if(busy||!context)return;
  const type=activeType,latest=documents[type],m=context.meeting;
  if(!context.editable&&action!=="preview")return;
  if(action==="preview"){
-  $("doc02Preview").innerHTML=previewMarkup(type,captureForm());
-  $("doc02Preview").scrollIntoView?.({block:"nearest",behavior:"smooth"});
+  setView("preview");
   return;
  }
  const row={p_meeting_id:m.id,p_doc_type:type,p_expected_revision:latest?.revision||0};
@@ -269,11 +307,13 @@ async function run(action,button){
  }finally{busy=false;$("doc02Actions").querySelectorAll("button").forEach(b=>b.disabled=false);}
 }
 function handleClick(event){
+ const view=event.target.closest("[data-doc02-view]");
+ if(view){setView(view.dataset.doc02View);return;}
  const tab=event.target.closest("[data-doc02-type]");
  if(tab){
   if(tab.dataset.doc02Type===activeType)return;
   if(hasUnsaved&&!global.confirm("มีร่างที่แก้ไขแต่ยังไม่ได้บันทึก ต้องการสลับเอกสารและทิ้งการแก้ไขนี้หรือไม่?"))return;
-  activeType=tab.dataset.doc02Type;renderDialog();return;
+  activeType=tab.dataset.doc02Type;activeView="edit";renderDialog();return;
  }
  const action=event.target.closest("[data-doc02-action]");
  if(action){run(action.dataset.doc02Action,action);return;}
@@ -286,7 +326,7 @@ async function open(options){
  if(!options?.meeting||options.meeting.meeting_mode==="externally_hosted"||
     options.meeting.meeting_mode==="co_hosted")return;
  const generation=++sessionGeneration;
- context=options;activeType=options.type==="minutes"?"minutes":"agenda";hasUnsaved=false;
+ context=options;activeType=options.type==="minutes"?"minutes":"agenda";activeView="edit";hasUnsaved=false;
  const dialog=$("doc02Dialog");if(!dialog)return;
  $("doc02Success").textContent="";
  dialog.showModal();
@@ -305,7 +345,7 @@ async function open(options){
 }
 function closePrivate(){
  ++sessionGeneration;context=null;documents={agenda:null,minutes:null};
- activeType="agenda";hasUnsaved=false;busy=false;
+ activeType="agenda";activeView="edit";hasUnsaved=false;busy=false;
  for(const id of ["doc02Editor","doc02Preview","doc02Status","doc02Actions","doc02Success"]){
   const node=$(id);if(node)node.replaceChildren();
  }
@@ -321,7 +361,7 @@ function init(){
 global.BWDDoc02={
  init,open,closePrivate,
  // Pure formatters exported for deterministic regression tests (no live calls).
- sourceFields,previewMarkup,escapeHtml,titleForSection,
+ sourceFields,previewMarkup,escapeHtml,titleForSection,cleanItemTitle,
  setTemplateForTest(key){templateKey=key;},
  setContextForTest(value){context=value;documents={agenda:null,minutes:null};activeType="agenda";}
 };
