@@ -11,8 +11,8 @@
   <script src="./config.public.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./doc02.js?v=doc02ux" defer></script>
-  <script src="./portal.js?v=doc02ux-ux11" defer></script>
-  <script src="./meeting-pdf-reader.js?v=ux07" defer></script>
+  <script src="./portal.js?v=doc02ux-ux12pdf" defer></script>
+  <script src="./meeting-pdf-reader.js?v=ux07-ux12pdf" defer></script>
 </head>
 <body>
   <a class="skip" href="#screen">ข้ามไปยังเนื้อหา</a>
@@ -128,7 +128,7 @@
         <details id="readerTools" class="reader-tools">
           <summary aria-label="ตัวเลือกการอ่าน PDF">⋯ <span>ตัวเลือก</span></summary>
           <div class="reader-menu">
-            <p id="readerSource" class="reader-source">อ่านผ่าน Google Drive</p>
+            <p id="readerSource" class="reader-source">กำลังเตรียม PDF</p>
             <div class="reader-tools-grid" role="group" aria-label="การแสดงหน้ากระดาษ">
               <button type="button" id="readerFitWidth" disabled aria-pressed="true">พอดีกว้าง</button>
               <button type="button" id="readerFitPage" disabled aria-pressed="false">ทั้งหน้า</button>
@@ -139,7 +139,7 @@
             <label class="reader-local-label" for="readerLocalPdf">เลือก PDF จากเครื่อง (สำรอง)
               <input id="readerLocalPdf" type="file" accept=".pdf,application/pdf">
             </label>
-            <p class="reader-tip">ตัวอ่านแบบหนังสือจะเปิดจาก Google Drive โดยอัตโนมัติเมื่อโหลดไฟล์ได้ หากไฟล์ถูกจำกัดสิทธิ์จะใช้ตัวอ่าน Drive แทน หรือเลือก PDF จากเครื่องได้โดยไม่อัปโหลด</p>
+            <p class="reader-tip">ตัวอ่านจะเปิด PDF ในเว็บตามสิทธิ์การประชุม หากยังไม่มีไฟล์สำรองในระบบ จะลองอ่านผ่าน Google Drive ตามสิทธิ์บัญชี Google หรือเลือก PDF จากเครื่องได้โดยไม่อัปโหลด</p>
             <button id="readerBackDrive" type="button" class="reader-drive-button" hidden>กลับไปอ่านผ่าน Google Drive</button>
             <a id="readerOpenDrive" target="_blank" rel="noopener noreferrer" href="https://drive.google.com/">เปิดต้นฉบับใน Google Drive</a>
           </div>
