@@ -15,16 +15,16 @@ test("signed-in meeting documents are scoped to current, unarchived links",()=>{
 });
 test("a signed-in reader can open the latest visible meeting attachment",()=>{
   assert.match(ui,/const latestDoc=docs\.find/);
-  assert.match(ui,/button\("อ่านเอกสารล่าสุด","readMeetingPdf"/);
+  assert.match(ui,/button\(latestDoc\.document_type==="minutes_draft"\?"เปิดรายงานการประชุม":"อ่านเอกสารล่าสุด","readMeetingPdf"/);
   assert.match(ui,/\.id===b\.dataset\.documentId && state\.meetings\.some/);
   assert.match(ui,/functions\/v1\/meeting-pdf\?document_id=/);
   assert.match(ui,/Authorization:"Bearer "\+token/);
-  assert.match(html,/portal\.js\?v=doc02ux-ux11/);
+  assert.match(html,/portal\.js\?v=doc02ux-ux12pdf/);
 });
 test("PDF access continues to respect meeting-document RLS; Drive originals are never republished",()=>{
   assert.match(reader,/meeting_documents/);
   assert.match(reader,/REST enforces meeting_documents SELECT RLS/);
-  assert.match(reader,/Could not retrieve PDF for book reader/);
+  assert.match(reader,/Authenticated PDF unavailable/);
   assert.doesNotMatch(sql,/\bdelete\s+from\s+public\.meeting_documents\b/i);
   assert.doesNotMatch(sql,/\bupdate\s+public\.meeting_documents\b/i);
 });
