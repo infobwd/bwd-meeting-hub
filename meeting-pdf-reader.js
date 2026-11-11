@@ -1,5 +1,5 @@
 /* BWD Meeting Hub R2 — sports-style mobile reader for meeting documents.
- * PDF.js book mode loads bytes from a Supabase RLS-gated Drive adapter first.
+ * PDF.js book mode loads bytes from a Supabase RLS-gated PDF endpoint first.
  * Google Drive Preview honors Drive ACLs as fallback; local files stay on device.
  */
 (() => {
@@ -173,17 +173,17 @@ async function loadOnline(){
   const signal=activeController.signal;
   await clearPdf();
   if(ticket!==loadingId||!dialog.open)return;
-  showBook("อ่านแบบหนังสือจาก Google Drive");
+  showBook("อ่าน PDF ในเว็บ");
   message("กำลังเปิด PDF แบบหนังสือ…");
   try{
     const buffer=await source.loadPdf(signal);
     if(ticket!==loadingId||!dialog.open)return;
-    await openBytes(buffer,ticket,"อ่านแบบหนังสือจาก Google Drive");
+    await openBytes(buffer,ticket,"อ่าน PDF ในเว็บ");
   }catch(error){
     if(ticket!==loadingId||!dialog.open)return;
     await clearPdf();
     if(ticket!==loadingId||!dialog.open)return;
-    showDrive("เปิดแบบหนังสือจาก Drive ไม่ได้ • แสดงตัวอ่าน Google Drive แทน (หากไฟล์จำกัดสิทธิ์ต้องใช้บัญชีที่ได้รับอนุญาต)");
+    showDrive("ยังโหลด PDF ในเว็บไม่ได้ • กรุณาตรวจสิทธิ์การประชุมหรือเปิดไฟล์ใน Google Drive");
   }finally{
     if(ticket===loadingId)activeController=null;
   }
