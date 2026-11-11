@@ -447,7 +447,7 @@ function meetingDocumentMarkup(d){
   const href="https://drive.google.com/file/d/"+encodeURIComponent(d.drive_file_id)+"/view";
   return '<div class="item"><h3>'+esc(d.title)+'</h3>'+
     '<p><span class="status gold">'+esc(labels[d.document_type]||"เอกสารประกอบ")+'</span> <span class="mini">ฉบับร่าง — ยังไม่รับรอง</span></p>'+
-    '<div class="actions">'+button("อ่าน PDF ในเว็บ","readMeetingPdf",{"document-id":d.id},"primary")+
+    '<div class="actions">'+button(d.document_type==="minutes_draft"?"เปิดรายงานการประชุม":"อ่าน PDF ในเว็บ","readMeetingPdf",{"document-id":d.id},"primary")+
     '<a class="button small outline" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">เปิดใน Google Drive</a></div></div>';
 }
 async function closeModal({force=false}={}){
@@ -960,7 +960,7 @@ function renderMeeting(m){
    '<div class="meeting-cover-detail">'+meetingCoverMarkup(m)+
    (editable?'<div class="meeting-cover-tools">'+button(m.cover_drive_file_id?"เปลี่ยนภาพปก":"เลือกภาพปกจาก Google Drive","coverPhoto",{"meeting-id":m.id})+'</div>':"")+'</div>'+
    jump+
-   (latestDoc?'<div class="actions meeting-current-document">'+button("อ่านเอกสารล่าสุด","readMeetingPdf",{"document-id":latestDoc.id},"primary")+"</div>":"")+
+   (latestDoc?'<div class="actions meeting-current-document">'+button(latestDoc.document_type==="minutes_draft"?"เปิดรายงานการประชุม":"อ่านเอกสารล่าสุด","readMeetingPdf",{"document-id":latestDoc.id},"primary")+"</div>":"")+
    '<div id="bwd-agenda" class="meeting-target">'+
    section("ระเบียบวาระ",agendaControls+agendas+
      (m.meeting_mode!=="co_hosted"?'<div class="actions doc02-entry">'+button("จัดทำร่างและพรีวิววาระ A4","doc02Preview",{"meeting-id":m.id,"doc-type":"agenda"},"outline")+"</div>":""),
