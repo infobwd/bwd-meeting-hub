@@ -19,7 +19,7 @@ Scope: existing school-board meeting, latest attached minutes PDF only.
 - No source document bytes or private Drive identifiers are in this public repository.
 
 ## Release tests and pending acceptance
-- Repository CI source/security tests for UI action, RLS-before-service-role ordering, SHA-256 and private-copy schema.
+- Repository CI source/security tests for UI action, RLS-before-service-role ordering, SHA-256 and private-copy schema. **PR #47 merged; feature run 338, main run 339 and GitHub Pages deployment run 37 passed. Supabase meeting-pdf Edge Function active at version 2 with verify_jwt=true.** This does not prove live browser access across independent school accounts.
 - Deployed Edge Function must retain `verify_jwt=true`; only the server has `SUPABASE_SERVICE_ROLE_KEY`.
 - **Still pending:** end-to-end browser verification with a real entitled user, account-scoped negative tests for another meeting and blocked user, iPhone/Android PDF.js checks, Supabase Free backup/restore, school privacy and retention sign-off.
 - This single-file backend mirror is a small-document interim solution. Future large/multiple documents should use a private Supabase Storage bucket with equivalent meeting-scoped authorization rather than repeated database blobs.
