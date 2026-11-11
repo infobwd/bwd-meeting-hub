@@ -265,3 +265,12 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Read-only Supabase snapshot: **14 stored / 13 active / 1 retired** agenda rows, five active sections, legacy minutes revision 4 `submitted`, 2 DOC-02 agenda drafts, 1 DOC-02 minutes draft and **0 formal ratifications**. Counts of private drafts can change with authorized user activity; the frontend PR did not create or edit them.
 - [ ] **Actual acceptance not complete:** iPhone Safari and Android Chrome manual testing of editing, saved revisions, screen zoom, keyboard/safe area, 13 real visible items, multipage Thai A4 and old draft reconciliation; independent-account RLS, confidential Drive permissions and certified PDF/signature/committee ratification remain gated for DOC-03.
 - See [DOC-02 mobile refinement acceptance](R2_DOC02_MOBILE_UX_REFINEMENT_ACCEPTANCE_20261110.md). Future UX fixes must preserve the audited historical retired agenda entry and distinct review/ratification states.
+
+
+## 29. UX-11 — Latest attached meeting documents, safe link retirement (2026-11-11)
+- [x] [Implementation plan](R2_UX11_CURRENT_MEETING_DOCUMENTS_PLAN_20261111.md) recorded before code/data changes.
+- [x] Additive `meeting_documents.archived_at` retains historical reference records but hides retired links from authenticated RLS readers; `private.can_view_meeting` remains required, including the existing meeting-pdf Edge Function's RLS lookup. No anonymous visibility is granted.
+- [x] R2 signed-in workspace loads only active links and offers a one-tap latest-document action, leaving the former PDF reader and original Google Drive link fallback intact.
+- [x] Migration applied; conditional private transaction archived 15 legacy meeting-document references and registered one verified newest private PDF. Readback: 16 total / 15 archived / 1 current, 16 audit events; original Drive files and all meeting/task/ratification states preserved. No document IDs published in the repository.
+- [ ] Verify privately held Google Drive documents with two independently authorized accounts. The existing `meeting-pdf` server cannot stream owner-only Drive files through public Drive download URLs, so signed-in Supabase access alone does **not** guarantee in-app bytes; direct Drive Preview needs its own ACL.
+- [ ] Complete independent-account editor/member/guest/blocked negative RLS checks, iPhone/Android verification, backups, school privacy sign-off and DOC-03 official issue/ratification before production acceptance.

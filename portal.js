@@ -687,7 +687,7 @@ async function reload(){
    c.from("profiles").select("id,display_name"),
    c.from("task_updates").select("*").order("created_at",{ascending:false}).limit(200),
    c.from("task_evidence").select("*").order("created_at",{ascending:false}),
-   c.from("meeting_documents").select("*").order("added_at",{ascending:false}),
+   c.from("meeting_documents").select("*").is("archived_at",null).order("added_at",{ascending:false}),
    c.from("meeting_participations").select("*"),
    c.from("external_attendance_reports").select("*").order("updated_at",{ascending:false})
   ];
@@ -937,6 +937,7 @@ function renderMeeting(m){
  const linked=state.links.filter(l=>l.meeting_id===m.id);
  const attendees=state.access.filter(a=>a.meeting_id===m.id);
  const docs=state.documents.filter(d=>d.meeting_id===m.id);
+ const latestDoc=docs.find(d=>/^[A-Za-z0-9_-]{10,128}$/.test(d.drive_file_id||""));
  const numbers=[...new Set(ag.map(a=>String(a.section)))].sort((a,b)=>Number(a)-Number(b));
  const agendas=ag.length?'<div class="agenda-groups">'+
    numbers.map(n=>renderAgendaGroup(m,n,ag.filter(a=>String(a.section)===n),numbers[0],editable)).join("")+
@@ -959,6 +960,7 @@ function renderMeeting(m){
    '<div class="meeting-cover-detail">'+meetingCoverMarkup(m)+
    (editable?'<div class="meeting-cover-tools">'+button(m.cover_drive_file_id?"เปลี่ยนภาพปก":"เลือกภาพปกจาก Google Drive","coverPhoto",{"meeting-id":m.id})+'</div>':"")+'</div>'+
    jump+
+   (latestDoc?'<div class="actions meeting-current-document">'+button("อ่านเอกสารล่าสุด","readMeetingPdf",{"document-id":latestDoc.id},"primary")+"</div>":"")+
    '<div id="bwd-agenda" class="meeting-target">'+
    section("ระเบียบวาระ",agendaControls+agendas+
      (m.meeting_mode!=="co_hosted"?'<div class="actions doc02-entry">'+button("จัดทำร่างและพรีวิววาระ A4","doc02Preview",{"meeting-id":m.id,"doc-type":"agenda"},"outline")+"</div>":""),
