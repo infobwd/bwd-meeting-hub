@@ -13,8 +13,8 @@ test("the reader attempts protected PDF.js automatically instead of Drive iframe
   assert.match(reader,/await source\.loadPdf\(signal\)/);
   assert.match(reader,/pdfjs\.getDocument\(\{data:bytes\}\)/);
   assert.match(reader,/await openBytes\(buffer,ticket/);
-  assert.match(reader,/showDrive\("เปิดแบบหนังสือจาก Drive ไม่ได้/);
-  assert.match(html,/อ่านแบบหนังสือจะเปิดจาก Google Drive โดยอัตโนมัติ/);
+  assert.match(reader,/showDrive\("ยังโหลด PDF ในเว็บไม่ได้/);
+  assert.match(html,/ตัวอ่านจะเปิด PDF ในเว็บตามสิทธิ์การประชุม/);
 });
 test("browser uses signed in user's JWT, not a secret or public file link",()=>{
   assert.match(portal,/state\.client\.auth\.getSession\(\)/);
@@ -35,5 +35,7 @@ test("edge restricts inputs and storage, checks meeting RLS before Drive access"
   assert.match(edge,/await readDrivePdf\(rows\[0\]\.drive_file_id\)/);
   assert.match(edge,/String\.fromCharCode\(\.\.\.data\.subarray\(0,5\)\) !== "%PDF-"/);
   assert.match(edge,/Cache-Control": "private, no-store"/);
-  assert.doesNotMatch(edge,/service.role|service_role|localStorage|createSignedUrl/);
+  assert.match(edge,/Deno.env.get\("SUPABASE_SERVICE_ROLE_KEY"\)/);
+  assert.ok(edge.indexOf("rows.length !== 1") < edge.indexOf("const privateCopy = await readPrivateCopy"));
+  assert.doesNotMatch(edge,/localStorage|createSignedUrl/);
 });
