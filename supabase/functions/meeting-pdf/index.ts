@@ -1,7 +1,8 @@
-// BWD Meeting Hub: RLS-gated Google Drive PDF reader adapter.
-// Reads ONLY a meeting-document ID visible to the Supabase JWT caller.
-// Downloads public-link-accessible Drive PDF on the server and never stores it.
-// Files restricted in Google Drive must use Drive Preview or future OAuth.
+// BWD Meeting Hub: RLS-gated reader of meeting PDFs.
+// FIRST authorize a document ID via the user's meeting_documents RLS.
+// THEN use a server-only verified private copy when available; otherwise try the
+// existing Google Drive public-link adapter and preserve the Drive fallback.
+// Never expose service-role credentials, PDF bytes or real document IDs in code.
 const ALLOWED_ORIGIN = "https://infobwd.github.io";
 const MAX_BYTES = 40 * 1024 * 1024;
 const REDIRECT_LIMIT = 4;
@@ -83,6 +84,71 @@ async function readDrivePdf(fileId: string): Promise<Uint8Array> {
   }
   throw error || new Error("drive_unavailable");
 }
+// These tables have no anon/authenticated privileges or SELECT policies. A
+// service-role query occurs ONLY after the user's JWT passes document RLS.
+async function readPrivateCopy(supabaseUrl: string, documentId: string): Promise<Uint8Array | null> {
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!serviceKey) throw new Error("private_copy_backend_unconfigured");
+  const privateHeaders = {
+    apikey: serviceKey,
+    Authorization: "Bearer " + serviceKey,
+    Accept: "application/json",
+  };
+  async function selectRows(table: string, params: Record<string,string>): Promise<any[]> {
+    const url = new URL("/rest/v1/" + table, supabaseUrl);
+    for (const [key,value] of Object.entries(params)) url.searchParams.set(key,value);
+    const response = await fetch(url, {
+      headers: privateHeaders, cache: "no-store", signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error("private_copy_database_unavailable");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("private_copy_bad_metadata");
+    return rows;
+  }
+  const assets = await selectRows("meeting_document_pdf_assets",{
+    select:"document_id,byte_size,part_count,sha256_hex",
+    document_id:"eq."+documentId,limit:"1",
+  });
+  if (assets.length === 0) return null;
+  if (assets.length !== 1) throw new Error("private_copy_bad_metadata");
+  const asset = assets[0];
+  const expectedSize = Number(asset.byte_size);
+  const expectedParts = Number(asset.part_count);
+  if (!Number.isInteger(expectedSize) || expectedSize < 5 || expectedSize > MAX_BYTES ||
+      !Number.isInteger(expectedParts) || expectedParts < 1 || expectedParts > 512 ||
+      !/^[a-f0-9]{64}$/.test(String(asset.sha256_hex))) {
+    throw new Error("private_copy_bad_metadata");
+  }
+  const chunks = await selectRows("meeting_document_pdf_chunks",{
+    select:"part,content_base64",document_id:"eq."+documentId,
+    order:"part.asc",limit:"512",
+  });
+  if (chunks.length !== expectedParts) throw new Error("private_copy_missing_chunks");
+  const pdf = new Uint8Array(expectedSize);
+  let offset=0;
+  for(let i=0;i<chunks.length;i++){
+    const chunk=chunks[i];
+    if(chunk.part!==i || typeof chunk.content_base64!=="string" ||
+      chunk.content_base64.length>65536 || chunk.content_base64.length%4!==0 ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(chunk.content_base64)) {
+      throw new Error("private_copy_invalid_chunk");
+    }
+    let decoded:string;
+    try{ decoded=atob(chunk.content_base64); }
+    catch{ throw new Error("private_copy_invalid_chunk"); }
+    if(offset+decoded.length>pdf.length) throw new Error("private_copy_size_mismatch");
+    for(let j=0;j<decoded.length;j++) pdf[offset+j]=decoded.charCodeAt(j);
+    offset+=decoded.length;
+  }
+  if(offset!==expectedSize || String.fromCharCode(...pdf.subarray(0,5))!=="%PDF-"){
+    throw new Error("private_copy_size_or_signature_mismatch");
+  }
+  const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",pdf));
+  const hex=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
+  if(hex!==asset.sha256_hex) throw new Error("private_copy_checksum_mismatch");
+  return pdf;
+}
+
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get("origin");
   if (origin && origin !== ALLOWED_ORIGIN) return problem(403,"Origin not allowed",null);
@@ -119,15 +185,18 @@ Deno.serve(async (request: Request) => {
     return problem(502,"Document authorization unavailable",origin);
   }
   try {
-    const bytes = await readDrivePdf(rows[0].drive_file_id);
+    // Do not attempt a privileged private-copy lookup before RLS authorized
+    // this exact meeting-document ID under the caller's JWT above.
+    const privateCopy = await readPrivateCopy(supabaseUrl,rows[0].id);
+    const bytes = privateCopy ?? await readDrivePdf(rows[0].drive_file_id);
     const h = headers(origin);
     h.set("Content-Type","application/pdf");
     h.set("Content-Length",String(bytes.byteLength));
     h.set("Content-Disposition","inline");
     return new Response(bytes,{status:200,headers:h});
   } catch {
-    // Restricted Google Drive files cannot be fetched from the public-link path.
-    // Do not bypass Drive permissions: frontend offers Drive Preview instead.
-    return problem(424,"Could not retrieve PDF for book reader; use Google Drive Preview",origin);
+    // If a private reading copy is missing or damaged, fail closed. Do not
+    // broaden original Google Drive permissions; frontend preserves Drive Preview.
+    return problem(424,"Authenticated PDF unavailable; use Google Drive Preview",origin);
   }
 });
