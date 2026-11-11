@@ -16,10 +16,10 @@ test("signed-in meeting documents are scoped to current, unarchived links",()=>{
 test("a signed-in reader can open the latest visible meeting attachment",()=>{
   assert.match(ui,/const latestDoc=docs\.find/);
   assert.match(ui,/button\("อ่านเอกสารล่าสุด","readMeetingPdf"/);
-  assert.match(ui,/d\.id===b\.dataset\.documentId && state\.meetings\.some/);
+  assert.match(ui,/\.id===b\.dataset\.documentId && state\.meetings\.some/);
   assert.match(ui,/functions\/v1\/meeting-pdf\?document_id=/);
   assert.match(ui,/Authorization:"Bearer "\+token/);
-  assert.match(html,/portal\.js\?v=ux11current/);
+  assert.match(html,/portal\.js\?v=doc02ux-ux11/);
 });
 test("PDF access continues to respect meeting-document RLS; Drive originals are never republished",()=>{
   assert.match(reader,/meeting_documents/);
