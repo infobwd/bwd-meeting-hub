@@ -183,7 +183,7 @@ async function loadOnline(){
     if(ticket!==loadingId||!dialog.open)return;
     await clearPdf();
     if(ticket!==loadingId||!dialog.open)return;
-    showDrive("ยังโหลด PDF ในเว็บไม่ได้ • กรุณาตรวจสิทธิ์การประชุมหรือเปิดไฟล์ใน Google Drive");
+    showDrive("ยังโหลด PDF ในเว็บไม่ได้ • หากไฟล์จำกัดสิทธิ์ใน Google Drive ต้องใช้บัญชี Google ที่ได้รับอนุญาต");
   }finally{
     if(ticket===loadingId)activeController=null;
   }
