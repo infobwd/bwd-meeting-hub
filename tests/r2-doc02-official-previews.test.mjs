@@ -99,7 +99,7 @@ test("DOC-02 escapes sensitive text and untrusted HTML in previews",()=>{
  assert.match(markup,/&lt;img/);
 });
 test("DOC-02 browser integration is separate from EXT-02 and old minutes mutation RPC",()=>{
- assert.match(html,/doc02\.js\?v=(?:doc02|agendasrc|doc02ux)/);
+ assert.match(html,/doc02\.js\?v=(?:doc02|agendasrc|doc02ux|roster12)/);
  assert.match(html,/portal\.js\?v=(?:doc02|agendasrc|doc02ux)/);
  assert.match(html,/id="doc02Dialog"/);
  assert.match(html,/id="doc02Preview"/);
