@@ -34,3 +34,11 @@ Because the photo is a scan and some spellings and the handwritten issue date ar
 
 ## Release status
 This file records software behavior and private reference import only, not independent identity proof or approval of an official meeting document. Merge/CI/Pages and private import results will be documented after verification.
+
+## Post-migration and private import verification (2026-11-12)
+- Supabase Meeting migration **`20261112063232 board_appointment_roster_reference_20261112`** succeeded after PR branch/PR CI run 353/354 passed.
+- `meeting_committee_appointment_rosters`: RLS enabled, authenticated scoped SELECT permitted by meeting access, anon SELECT denied, authenticated direct INSERT/UPDATE denied.
+- Private authorized import (source image in this chat): exactly **one** meeting-scoped roster revision, **nine** appointment entries, **eight named** and **one office-only**. State `transcribed_pending_verification`. One nonpersonal audit event recorded (`actor_id=NULL` to avoid impersonating a human editor). No image bytes, names or private record identifiers were committed to this public repository.
+- Read-only post-import snapshot: **13 active / 1 retired** agenda rows; one unchanged legacy `minutes` row version 4 `submitted`; **2 existing DOC-02 agenda** and **1 DOC-02 minutes** snapshots unchanged; **0** formal ratifications. No new DOC-02 document versions were silently authored. An authorized editor must explicitly select **บันทึกร่าง** for a new version that includes the reference appendix.
+- Because the photographed source date and some name spellings are not clearly certified, the school needs to inspect the original appointment order before approving any official document. The source photograph has NOT been copied to Drive by this implementation.
+- Independent authenticated editor/committee guest/unauthorized-member RLS tests and real iPhone/Android visual inspection remain pending, notwithstanding successful source and permission-catalog checks.
