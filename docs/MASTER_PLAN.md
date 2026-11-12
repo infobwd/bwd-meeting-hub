@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.13 | 2026-11-10 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.14 | 2026-11-12 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -282,3 +282,11 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Database protection confirmed: RLS enabled; `anon` and `authenticated` lack direct SELECT on the private-content tables; service_role may read only from backend. Original Google Drive ACL unchanged.
 - [x] UX-12 PR #47 merged; feature GitHub Actions run **338**, main run **339** and GitHub Pages deployment run **37** passed. Supabase `meeting-pdf` Edge Function upgraded to active **version 2**, `verify_jwt=true` and verified against deployed code. Private content table RLS/browser SELECT denied; the previously checked PDF remains ready.
 - [ ] **User acceptance still pending:** real authorized and unauthorized login tests, mobile PDF viewing, backup/restore, retention/privacy sign-off; a code or PDF deployment is not committee ratification. The document remains a draft pending official DOC-03 review/approval flow.
+
+## 31. Committee appointment evidence for DOC-02 agenda and minutes (2026-11-12)
+- User provided a photographed appointment announcement of the school's nine-seat basic education committee: eight named appointees and the school-director **office-holder** as member/secretary. **This does not establish real attendance**, the actual presider, the actual recorder or legal approval of any meeting.
+- [x] [Evidence-to-UI plan](R2_COMMITTEE_APPOINTMENT_ROSTER_DOC02_PLAN_20261112.md) recorded before development; names, private image, signed order and Auth identifiers are not inserted into the public repository.
+- [x] [Implementation/acceptance](R2_BOARD_APPOINTMENT_ROSTER_DOC02_ACCEPTANCE_20261112.md): protected, revisioned committee-appointment roster storage with meeting-scoped RLS; both DOC-02 draft agenda and draft minutes can display the committee roster **as an explicitly labeled reference appendix**. Does not auto-populate attendees/chair/recorder or rewrite existing submitted/reviewed snapshots. New snapshots include an appointment reference only when a permitted editor explicitly saves a new draft.
+- [x] New database migration source `supabase/migrations/202611120001_committee_appointment_roster_reference.sql`; user-provided person data must be imported separately and privately after code review, preserving clear `transcribed_pending_verification` status. Image file remains in chat unless separately uploaded to the authorized private document store.
+- [ ] Verify CI, merged PR, deployed Supabase migration, scope-limited private roster import, GitHub Pages and post-import read-back **independently**; do not infer completion from writing code alone.
+- [ ] Before official DOC-03 issuance: school checks the original appointment order, ambiguous spellings and issued/effective dates, actual principal identity, attendees/absentees, acting chair, minute-taker, quorum, signing and ratification. Current historical report v4 `submitted` and the source-corrected 13 active/five-group agenda must remain untouched.
