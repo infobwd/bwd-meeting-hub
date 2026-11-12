@@ -1,5 +1,5 @@
 # BWD Meeting Hub — Master Plan
-Version: 0.2.14 | 2026-11-12 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
+Version: 0.2.15 | 2026-11-12 | Status: R2 connected to Supabase; UX-05/06 code verified; live role/device release acceptance pending
 
 ## 1. Vision
 ระบบกลางจัดการการประชุมและติดตามภารกิจของโรงเรียนบ้านวังด้ง รองรับการประชุมกรรมการสถานศึกษา ประชุมครู ประชุมฝ่ายบริหาร การประชุมคณะทำงาน และการประชุมอื่น โดยมีวงจร **เตรียมวาระ → ประชุม → มติ/ข้อสรุป → งานมอบหมาย → ติดตาม → ตรวจรับ → ประชุมครั้งถัดไป**.
@@ -291,3 +291,10 @@ Source information from chat image is **unapproved preparation**, not a ratified
 - [x] Supabase migration `20261112063232 board_appointment_roster_reference_20261112` applied; private guarded import created one source-reference version with nine appointment slots (eight named, one office-only), marked `transcribed_pending_verification` and audited without impersonating a human. Readback: 13 active/1 retired agenda topics; legacy minutes v4 `submitted`; existing DOC-02 agenda v1–2 and minutes v1 unchanged; 0 ratifications. No private names or uploaded image stored in GitHub.
 - [ ] Verify final PR Merge, `main` CI and GitHub Pages independently; inspect on mobile and test authorized/unauthorized RLS accounts before official release.
 - [ ] Before official DOC-03 issuance: school checks the original appointment order, ambiguous spellings and issued/effective dates, actual principal identity, attendees/absentees, acting chair, minute-taker, quorum, signing and ratification. Current historical report v4 `submitted` and the source-corrected 13 active/five-group agenda must remain untouched.
+
+## 32. Committee appointment roster release verification (2026-11-12)
+- [x] [PR #49](https://github.com/infobwd/bwd-meeting-hub/pull/49) merged (`e619d779e3b164795b074206f91d583ee3883309`), feature CI 358 / PR CI 357, main smoke 359, and Pages deployment 39 **all passed**. Existing EXT-02, UX-12 private minutes PDF reader and DOC-02 source-rebase behavior retained.
+- [x] RLS-protected Supabase migration `board_appointment_roster_reference_20261112` applied; private, guarded and audited data import stores a `transcribed_pending_verification` roster with **nine seats: eight named + one school-principal office-only seat**, never as a meeting attendee list. Sensitive names and scan not committed to GitHub.
+- [x] Read-only post-merge database: **13 active/1 retired** agenda topics, legacy minutes revision 4 `submitted`, **2 prior agenda-draft revisions**, **1 prior minutes-draft revision**, **0 ratifications**. Appointments are a read-only reference appendix visible in both DOC-02 document types; authorized editor must explicitly save a NEW draft revision to snapshot it. Source appointment import did not silently change old drafts.
+- [ ] Original order and exact name spellings/handwritten date, current office-holder identity, actual chair, attendees/absentees and minute-taker **must be independently verified by the school**; chat photograph has not been permanently uploaded to Drive. Multi-user RLS negative tests and actual iPhone/Android UAT remain pending. No official DOC-03 export/ratification.
+- Details: [DOC-02 appointment roster acceptance](R2_BOARD_APPOINTMENT_ROSTER_DOC02_ACCEPTANCE_20261112.md).
