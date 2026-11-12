@@ -78,14 +78,77 @@ function alignDraftToSource(previous,meeting,agendas){
  }
  return fresh;
 }
+
+function appointmentReference(roster){
+ if(!roster||!Array.isArray(roster.entries)||!roster.entries.length)return null;
+ return {
+  source_id:String(roster.id||""),revision:Number(roster.revision||0),
+  authority_label:String(roster.authority_label||""),
+  source_title:String(roster.source_title||""),
+  source_kind:String(roster.source_kind||""),
+  verification_status:String(roster.verification_status||"transcribed_pending_verification"),
+  term_ends_on:roster.term_ends_on||null,
+  announced_on:roster.announced_on||null,
+  entries:roster.entries.slice(0,30).map(entry=>({
+   order:Number(entry.order||0),
+   name:typeof entry.name==="string"?entry.name:"",
+   office:typeof entry.office==="string"?entry.office:"",
+   representation:String(entry.representation||""),
+   committee_role:String(entry.committee_role||""),
+   spelling_review_required:entry.spelling_review_required===true
+  }))
+ };
+}
+function appointmentRosterForDraft(type,fields){
+ const latest=documents[type];
+ if(!context?.editable||!context.appointmentRoster||
+   (latest&&!["draft","returned"].includes(latest.document_status)))return fields;
+ const ref=appointmentReference(context.appointmentRoster);
+ if(!ref)return fields;
+ fields.header={...(fields.header||{}),appointment_reference:ref};
+ return fields;
+}
+function appointmentReferenceNotSaved(type){
+ const roster=context?.appointmentRoster,latest=documents[type];
+ if(!context?.editable||!roster||!roster.entries?.length||
+    (latest&&!["draft","returned"].includes(latest.document_status)))return false;
+ const current=latest?.document_fields?.header?.appointment_reference;
+ return current?.source_id!==roster.id||Number(current?.revision||0)!==Number(roster.revision);
+}
+function appointmentRosterMarkup(ref,forPaper=false){
+ if(!ref||!Array.isArray(ref.entries)||!ref.entries.length)return "";
+ const heading="คณะกรรมการสถานศึกษาตามประกาศแต่งตั้ง (ข้อมูลอ้างอิง ไม่ใช่ผู้มาประชุมจริง)";
+ const rows=ref.entries.slice().sort((a,b)=>Number(a.order)-Number(b.order)).map(person=>{
+  const personName=person.name||person.office||"ตำแหน่งตามคำสั่งแต่งตั้ง";
+  const office=person.name&&person.office?" • "+escapeHtml(person.office):"";
+  return '<li><span class="doc02-appointee-name">'+escapeHtml(personName)+'</span>'+office+
+   ' — '+escapeHtml(person.representation||"ไม่ระบุผู้แทน")+
+   ' — <strong>'+escapeHtml(person.committee_role||"กรรมการ")+'</strong>'+
+   (person.spelling_review_required?' <small>(ตรวจสอบตัวสะกดกับต้นฉบับ)</small>':"")+'</li>';
+ }).join("");
+ const foot='คัดข้อมูลจากภาพประกาศที่ผู้ใช้แนบเพื่ออ้างอิง โปรดตรวจสอบคำสั่งแต่งตั้งและตัวสะกด'+
+  ' รวมถึงผู้ปฏิบัติหน้าที่จริงก่อนออกเอกสารรับรอง';
+ const body='<ol class="doc02-appointment-list">'+rows+'</ol>'+
+  '<p class="doc02-appointment-warning">'+escapeHtml(foot)+'</p>';
+ return forPaper?
+   '<section class="doc02-appointment-appendix"><h3>'+escapeHtml(heading)+'</h3>'+
+   '<p class="doc02-appointment-source">'+escapeHtml(ref.authority_label||"หน่วยงานผู้ออกประกาศ")+
+   ' · '+escapeHtml(ref.source_title||"ประกาศแต่งตั้ง")+
+   '</p>'+body+'</section>':
+   '<details class="doc02-appointment-box" open><summary>'+escapeHtml(heading)+'</summary>'+body+'</details>';
+}
+
 function draftFields(type){
  const latest=documents[type];
+ let fields;
  if(latest?.document_fields?.items&&latest?.document_fields?.header){
-  if(hasChangedSource(type)&&["draft","returned"].includes(latest.document_status))
-   return alignDraftToSource(latest.document_fields,context.meeting,context.agendas);
-  return JSON.parse(JSON.stringify(latest.document_fields));
+  fields=hasChangedSource(type)&&["draft","returned"].includes(latest.document_status)?
+    alignDraftToSource(latest.document_fields,context.meeting,context.agendas):
+    JSON.parse(JSON.stringify(latest.document_fields));
+ }else{
+  fields=sourceFields(type,context.meeting,context.agendas);
  }
- return sourceFields(type,context.meeting,context.agendas);
+ return appointmentRosterForDraft(type,fields);
 }
 function titleForSection(section){
  const map=templateKey==="school6"?labels6:labels5;
@@ -147,6 +210,7 @@ function editorMarkup(type,fields){
  const headerNames=type==="agenda"?[headerKeys[0],headerKeys[1],headerKeys[3]]:headerKeys;
  return '<div class="doc02-editor"><p class="doc02-helper">แก้ไขเฉพาะข้อมูลร่างในเอกสารชุดใหม่นี้ '+
    'ไม่เขียนทับวาระและรายงานฉบับเดิมของการประชุม</p>'+
+   appointmentRosterMarkup(h.appointment_reference)+
    '<fieldset><legend>ข้อมูลหัวเอกสาร</legend>'+
    headerNames.map(([key,label])=>textField(label,key,h[key]||"",
      ["attendees","absentees","other_attendees"].includes(key))).join("")+'</fieldset>'+
@@ -210,6 +274,8 @@ function previewMarkup(type,fields){
  const ver=snapshot?'ฉบับที่ '+snapshot.revision:'ฉบับร่างใหม่ (ยังไม่บันทึก)';
  const status=snapshot?statusNames[snapshot.document_status]||"ร่าง":"ฉบับร่าง";
  const pages=previewPages(items,type);
+ const roster=h.appointment_reference?.entries?.length?h.appointment_reference:null;
+ const totalPages=pages.length+(roster?1:0);
  const allSections=[...new Set(items.map(a=>Number(a.section)))];
  const renderHeader=pageIndex=>{
   if(pageIndex>0)return '<h2>'+escapeHtml(heading)+' (ต่อ)</h2>'+
@@ -221,6 +287,8 @@ function previewMarkup(type,fields){
    (String(h.meeting_no||"").trim()?'ครั้งที่ '+line(h.meeting_no):'ยังไม่ระบุครั้งที่ (กรอกในข้อมูลหัวเอกสาร)')+'</p>'+
    '<p class="doc02-paper-center">วันที่ '+escapeHtml(thaiDate(m.scheduled_on))+
    ' · '+line(h.venue||m.location)+'</p>'+
+   (roster?'<p class="doc02-appointment-link">มีบัญชีกรรมการตามประกาศแต่งตั้งแนบเป็นภาคผนวก'+
+     ' (ไม่ใช่บัญชีผู้เข้าประชุมจริง)</p>':"")+
    '<p class="doc02-paper-meta">สถานะเอกสาร DOC-02: '+escapeHtml(status)+' • '+escapeHtml(ver)+
    ' • ยังไม่มีหลักฐานรับรองโดยที่ประชุม</p>';
   if(type==="agenda"){
@@ -242,7 +310,7 @@ function previewMarkup(type,fields){
  };
  const pagesHtml=pages.map((page,pageIndex)=>{
   let body='<article class="doc02-page" data-doc02-page="'+(pageIndex+1)+
-   '" aria-label="พรีวิว A4 หน้าที่ '+(pageIndex+1)+' จาก '+pages.length+' (ประมาณ) ยังไม่ได้รับรอง">'+
+   '" aria-label="พรีวิว A4 หน้าที่ '+(pageIndex+1)+' จาก '+totalPages+' (ประมาณ) ยังไม่ได้รับรอง">'+
    '<div class="doc02-watermark">ตัวอย่างฉบับร่าง • ไม่ใช่เอกสารรับรอง</div>'+
    renderHeader(pageIndex);
   for(const section of [...new Set(page.map(a=>Number(a.section)))]){
@@ -260,11 +328,17 @@ function previewMarkup(type,fields){
     '<p class="doc02-not-signature">ยังไม่ใช่ลายมือชื่อหรือการรับรองรายงานโดยที่ประชุม</p>';
   }
   body+='<footer class="doc02-paper-foot">พรีวิวสำหรับการตรวจทานเท่านั้น — ไม่ใช่เอกสารที่ออกใช้แล้ว'+
-   '<p class="doc02-page-counter">หน้า '+(pageIndex+1)+' / '+pages.length+' (ประมาณ)</p></footer></article>';
+   '<p class="doc02-page-counter">หน้า '+(pageIndex+1)+' / '+totalPages+' (ประมาณ)</p></footer></article>';
   return body;
  }).join("");
+ const appendix=roster?'<article class="doc02-page" data-doc02-page="'+totalPages+
+   '" aria-label="ภาคผนวกบัญชีกรรมการตามประกาศแต่งตั้ง หน้าที่ '+totalPages+'">'+
+   '<div class="doc02-watermark">ตัวอย่างฉบับร่าง • ไม่ใช่เอกสารรับรอง</div>'+
+   appointmentRosterMarkup(roster,true)+
+   '<footer class="doc02-paper-foot">บัญชีกรรมการตามประกาศแต่งตั้ง ไม่ใช่หลักฐานการเข้าประชุมจริง'+
+   '<p class="doc02-page-counter">หน้า '+totalPages+' / '+totalPages+' (ประมาณ)</p></footer></article>':"";
  return '<p class="doc02-preview-info">ตัวอย่าง A4 แบ่งหน้าโดยประมาณสำหรับตรวจทานบนหน้าจอ'+
-  ' — การจัดหน้าสำหรับออกเอกสารราชการจริงอยู่ใน DOC-03</p>'+pagesHtml;
+  ' — การจัดหน้าสำหรับออกเอกสารราชการจริงอยู่ใน DOC-03</p>'+pagesHtml+appendix;
 }
 function selectedStatus(){
  const current=documents[activeType];return current?statusNames[current.document_status]||"ไม่ทราบสถานะ":"ฉบับร่าง (ยังไม่บันทึก)";
@@ -288,6 +362,10 @@ function renderDialog(){
   '<span class="doc02-legacy-chip">รายงานเดิม: ฉบับที่ '+escapeHtml(leg.version||0)+
   ' · '+escapeHtml(({draft:"ฉบับร่าง",submitted:"รอตรวจทาน",approved:"ผู้บริหารตรวจทานแล้ว"})[leg.status]||leg.status)+
   '</span>':"";
+ const appointmentNotice=appointmentReferenceNotSaved(type)?
+  '<p class="notice-box" role="status">พบรายชื่อกรรมการจากประกาศแต่งตั้งฉบับอ้างอิงล่าสุด '+
+  'จะแสดงในพรีวิว แต่ยังไม่รวมในรุ่นเอกสารที่บันทึกไว้ กด “บันทึกร่าง” เพื่อเก็บไว้ในรุ่นใหม่ '+
+  'และตรวจชื่อกับประกาศต้นฉบับก่อนใช้อย่างเป็นทางการ</p>':"";
  const sourceNotice=hasChangedSource(type)?
   '<p class="notice-box" role="status">หัวข้อวาระต้นทางมีการปรับปรุงหลังบันทึกรุ่นนี้ '+
   (["draft","returned"].includes(latest?.document_status)?
@@ -301,14 +379,14 @@ function renderDialog(){
    (latest?'<span class="mini">รุ่นที่ '+escapeHtml(latest.revision)+'</span>':"")+legacyInfo+'</div>'+
    '<details class="doc02-state-details"><summary>รายละเอียดสถานะเอกสาร</summary>'+
    '<p>ร่าง DOC-02 แยกจากรายงานเดิม และการตรวจทานไม่ใช่การรับรองโดยที่ประชุม</p></details>';
- $("doc02Editor").innerHTML=sourceNotice+(readonly?
+ $("doc02Editor").innerHTML=sourceNotice+appointmentNotice+(readonly?
   '<p class="notice-box">เอกสารรุ่นนี้ล็อกไว้ตามสถานะ หากส่งตรวจแล้วต้องให้ผู้ตรวจส่งกลับก่อนแก้ไข</p>'+
    editorMarkup(type,fields):editorMarkup(type,fields));
  $("doc02Editor").querySelectorAll("input,textarea").forEach(el=>el.disabled=readonly);
  $("doc02Actions").innerHTML=actions;
  $("doc02Preview").innerHTML=previewMarkup(type,fields);
  $("doc02Error").hidden=true;$("doc02Error").textContent="";
- hasUnsaved=false;
+ hasUnsaved=appointmentReferenceNotSaved(type);
  syncView();
  setZoom(previewZoom);
 }
@@ -449,6 +527,13 @@ async function open(options){
   if(error)throw error;
   if(generation!==sessionGeneration||!context)return;
   templateKey=data?.agenda_template_key||"legacy5";
+  // RLS restricts this to authorized meeting viewers; no direct browser writes.
+  const rosterResponse=await options.client.from("meeting_committee_appointment_rosters")
+   .select("id,revision,authority_label,source_title,source_kind,source_reference,announced_on,term_ends_on,verification_status,entries")
+   .eq("meeting_id",options.meeting.id).order("revision",{ascending:false}).limit(1);
+  if(generation!==sessionGeneration||!context)return;
+  context.appointmentRoster=rosterResponse.error?null:(rosterResponse.data?.[0]||null);
+  context.appointmentError=!!rosterResponse.error;
   await reloadDocuments();
  }catch(error){
   if(generation===sessionGeneration&&context)
@@ -474,6 +559,7 @@ global.BWDDoc02={
  init,open,closePrivate,
  // Pure formatters exported for deterministic regression tests (no live calls).
  sourceFields,previewMarkup,previewPages,escapeHtml,titleForSection,cleanItemTitle,previewMeetingTitle,sameSource,alignDraftToSource,
+ appointmentReference,appointmentRosterForDraft,appointmentRosterMarkup,
  setTemplateForTest(key){templateKey=key;},
  setContextForTest(value){context=value;documents={agenda:null,minutes:null};activeType="agenda";}
 };
