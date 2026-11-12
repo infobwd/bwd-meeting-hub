@@ -871,3 +871,30 @@ dialog.meeting-reader::backdrop{background:#071a33cf}
  .doc02-dialog .doc02-page{box-shadow:none;min-height:297mm;padding:18mm;width:210mm}
  .doc02-watermark{display:block!important}
 }
+
+
+/* Committee appointment source: reference only; never substitute for actual attendance. */
+.doc02-appointment-box{border:1px solid #ccdcee;background:#f0f6fc;
+ border-radius:12px;padding:10px 12px;margin:8px 0 16px;overflow-wrap:anywhere}
+.doc02-appointment-box>summary{cursor:pointer;font-weight:600;min-height:44px;
+ display:list-item;align-content:center;color:#16426c;line-height:1.5}
+.doc02-appointment-box>summary:focus-visible{outline:3px solid #e6ba3e}
+.doc02-appointment-list{margin:8px 0 12px;padding-left:25px;line-height:1.65;
+ font-size:13px;overflow-wrap:anywhere}
+.doc02-appointment-list li{padding:5px 3px;border-bottom:1px solid #dbe6f1}
+.doc02-appointment-list li:last-child{border-bottom:0}
+.doc02-appointee-name{font-weight:600}
+.doc02-appointment-warning{font-size:12px!important;line-height:1.7!important;
+ color:#78532d;margin:9px 0!important}
+.doc02-appointment-source{font-size:13px;margin:10px 0}
+.doc02-appointment-link{font-size:12px;color:#5e4c32;margin:8px 0}
+.doc02-appointment-appendix{break-inside:auto;overflow-wrap:anywhere}
+.doc02-appointment-appendix h3{font-size:17px;text-align:center}
+.doc02-appointment-appendix ol{font-size:15px;padding-left:25px;margin:14px 0}
+.doc02-appointment-appendix li{padding:6px 0;line-height:1.55}
+@media(max-width:700px){
+ .doc02-appointment-list{font-size:12px}
+ .doc02-appointment-appendix h3{font-size:14px}
+ .doc02-appointment-appendix ol{font-size:12px;padding-left:17px}
+ .doc02-appointment-warning{font-size:11px!important}
+}

@@ -96,9 +96,9 @@ test("DOC-02 mobile: switches one pane at a time with no percentage-height split
  assert.match(css,/\.doc02-preview-scroll\[data-zoom="large"\] \.doc02-page/);
  assert.match(js,/previewMarkup\(activeType,captureForm\(\)\)/);
  assert.match(js,/button\.setAttribute\("aria-pressed"/);
- assert.match(html,/portal\.css\?v=doc02ux/);
+ assert.match(html,/portal\.css\?v=roster12/);
  assert.match(html,/portal\.js\?v=doc02ux/);
- assert.match(html,/doc02\.js\?v=doc02ux/);
+ assert.match(html,/doc02\.js\?v=roster12/);
 });
 
 test("DOC-02 mobile: compact status and input guidance without changing legacy report",()=>{
